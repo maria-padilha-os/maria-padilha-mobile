@@ -8,12 +8,20 @@ session squeezed onto a phone.
 
 ## Status
 
-**Scaffold / base decision.** The mobile base and reference device are not
-decided. The first queued task is an ADR comparing Arch Linux ARM with
-Phosh/Plasma Mobile against postmarketOS, including kernel/firmware support,
-maintenance cost, and how much of the Padilha shell can be reused.
+**Base decided (2026-11-06).** [ADR 0001](docs/adr/0001-mobile-base-and-reference-device.md)
+selects postmarketOS (now Nura) with Phosh, `qemu-aarch64` as the QEMU
+reference, and PinePhone-class close-to-mainline aarch64 handsets as the first
+physical target.
 
-Do not assume Android, and do not flash a device yet.
+| Area | Decision |
+| --- | --- |
+| Base | postmarketOS/Nura stable, Alpine |
+| Interface | Phosh, with a Padilha palette layer |
+| QEMU | `qemu-aarch64` |
+| Physical | PinePhone-class close-to-mainline aarch64 |
+
+No image has been built or flashed, and no device support is claimed until the
+ADR's physical gate passes. Do not assume Android.
 
 ## Goals
 
@@ -34,5 +42,5 @@ The desktop image is
 
 ## Development
 
-Only the README and test scaffold exist. `tests/all.sh` checks basic hygiene; it
-does not build or flash anything.
+Only the README, the ADR, and the test scaffold exist. `tests/all.sh` checks
+basic hygiene and the ADR contract; it does not build or flash anything.
