@@ -8,10 +8,11 @@ session squeezed onto a phone.
 
 ## Status
 
-**Base decided (2026-11-06).** [ADR 0001](docs/adr/0001-mobile-base-and-reference-device.md)
-selects postmarketOS (now Nura) with Phosh, `qemu-aarch64` as the QEMU
-reference, and PinePhone-class close-to-mainline aarch64 handsets as the first
-physical target.
+**Base decided and image scaffold in place.** [ADR 0001](docs/adr/0001-mobile-base-and-reference-device.md)
+selects postmarketOS (Nura) stable on Alpine with Phosh, `qemu-aarch64` as the
+QEMU reference, and PinePhone-class close-to-mainline aarch64 handsets as the
+first physical target. The scaffold implements that decision as a QEMU-first
+image builder; Android is not the base and is not assumed.
 
 | Area | Decision |
 | --- | --- |
@@ -21,7 +22,8 @@ physical target.
 | Physical | PinePhone-class close-to-mainline aarch64 |
 
 No image has been built or flashed, and no device support is claimed until the
-ADR's physical gate passes. Do not assume Android.
+ADR's physical gate passes.
+
 
 ## Goals
 
@@ -40,7 +42,20 @@ tracked configs live in
 The desktop image is
 [`maria-padilha-os`](https://github.com/maria-padilha-os/maria-padilha-os).
 
-## Development
+## Building
 
-Only the README, the ADR, and the test scaffold exist. `tests/all.sh` checks
-basic hygiene and the ADR contract; it does not build or flash anything.
+The build entry point is [`scripts/build.sh`](scripts/build.sh); see
+[`docs/build.md`](docs/build.md) for prerequisites and the full flow.
+
+```sh
+make check        # unprivileged config/files/secrets/checksum gate
+make build        # full QEMU image build on a builder with sudo/doas
+make qemu         # boot the checked image with QEMU
+make test         # CI checks
+```
+
+Pinned `pmbootstrap`/`pmaports` inputs live in
+[`config/build.conf`](config/build.conf), and the QEMU target lives in
+[`devices/qemu-aarch64/`](devices/qemu-aarch64/). Flashing and physical
+partitioning are out of scope; only the QEMU target is built in this
+milestone.
