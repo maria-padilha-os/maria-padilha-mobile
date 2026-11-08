@@ -11,11 +11,13 @@ PinePhone target is documented but not built or flashed in this milestone.
 | `scripts/run-qemu.sh` | Boot the built image with QEMU |
 | `scripts/lib.sh` | Shared config, validation and checksum helpers |
 | `config/build.conf` | Pinned release, toolchain commits and mirrors |
+| `config/keyboard/keyboard.conf` | Squeekboard package, layouts, orientation and privacy policy |
 | `devices/<name>/device.conf` | Per-target device, UI and QEMU settings |
 | `devices/qemu-aarch64/` | First-class virtual target |
 | `devices/pine64-pinephone/` | Deferred physical reference; build refuses it |
 | `shell/` | Touch-first Quickshell prototype; not installed by the image builder yet |
 | `tests/build.sh` | Config/files/secrets/checksum gate (unprivileged) |
+| `tests/keyboard.sh` | Keyboard config/layout/privacy and installer checks |
 | `tests/shell.sh` | Palette, QML lint, self-test and offscreen render checks |
 | `tests/all.sh` | Repository checks used by CI |
 
@@ -25,6 +27,9 @@ PinePhone target is documented but not built or flashed in this milestone.
 - `qemu-system-aarch64` **only** for `--boot` / `scripts/run-qemu.sh`
 - `sudo` or `doas` **only** for a full `pmbootstrap` build. pmbootstrap uses
   chroot and mount internally; the wrapper never calls either directly.
+- No root for the keyboard checks or `scripts/install-squeekboard.sh`; the
+  installer writes only under the user's data directory and applies
+  unprivileged gsettings.
 
 The checks in this repository do not need root and do not touch a block
 device. Run the full build on a dedicated builder or disposable VM that can
@@ -38,7 +43,7 @@ make build-dry-run         # print the pinned build plan
 make build                 # full image build (builder with sudo/doas)
 make boot                  # build, then boot with QEMU
 make qemu                  # boot an already-built image
-make test                  # repository CI checks
+make test                  # repository CI checks, including keyboard checks
 ```
 
 Direct equivalents:
@@ -76,7 +81,8 @@ checked before use. `pmaports` is fetched at the exact commit and its
 1. Validates config, required files, shell syntax, secrets and checksums.
 2. Refuses to run as root or to build a physical target.
 3. Fetches pinned `pmbootstrap` and `pmaports` into `.scratch/build/`.
-4. Writes a pmbootstrap config for the device, Phosh and systemd.
+4. Writes a pmbootstrap config for the device, Phosh and systemd, with the
+   Squeekboard package in `extra_packages`.
 5. Runs `pmbootstrap install --no-split` to create the QEMU image.
 6. Exports the image to `out/maria-padilha-qemu-aarch64.img` and writes its
    SHA-256 checksum.
@@ -84,7 +90,9 @@ checked before use. `pmaports` is fetched at the exact commit and its
 No partitioner, bootloader installer or flasher is implemented here; the
 wrapper deliberately delegates image assembly to pmbootstrap. The `shell/`
 prototype is a separate Quickshell application and is not installed into the
-image by this builder yet.
+image by this builder yet. The on-screen keyboard package and layouts are
+documented in [`docs/keyboard.md`](keyboard.md); the layout installer is a
+user-session step, not a privileged image-build step.
 
 ## Booting in QEMU
 

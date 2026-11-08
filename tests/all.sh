@@ -78,6 +78,13 @@ else
   fail=1
 fi
 
+if bash tests/keyboard.sh; then
+  echo "ok tests/keyboard.sh"
+else
+  echo "FAIL tests/keyboard.sh"
+  fail=1
+fi
+
 if bash tests/shell.sh; then
   echo "ok tests/shell.sh"
 else

@@ -101,7 +101,14 @@ Item {
                         selectionColor: root.theme.primaryContainer
                         selectedTextColor: root.theme.primaryContainerText
                         font.pixelSize: 17
+                        inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
                         onTextChanged: root.state.appQuery = text
+                        onActiveFocusChanged: {
+                            if (activeFocus)
+                                root.state.attachKeyboard(input, "text");
+                            else
+                                root.state.detachKeyboard(input);
+                        }
                         onAccepted: {
                             if (root.state.filteredApps.length > 0)
                                 root.appLaunched(root.state.filteredApps[0]);

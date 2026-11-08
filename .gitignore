@@ -4,3 +4,5 @@ out/
 *.img
 *.pkg.tar.zst
 .env
+__pycache__/
+*.pyc

@@ -71,6 +71,7 @@ if [ "$DRY_RUN" = true ]; then
   log "would fetch pmbootstrap $PMBOOTSTRAP_VERSION ($PMBOOTSTRAP_COMMIT)"
   log "would fetch pmaports $PMAPORTS_COMMIT"
   log "would install: $DEVICE ($DEVICE_ARCH, $UI, $INIT_SYSTEM)"
+  log "would install keyboard: $KEYBOARD_BACKEND ($KEYBOARD_PACKAGE)"
   log "would write image: out/$IMAGE_NAME"
   log "dry run complete; no network or privileged command used"
   exit 0
@@ -157,7 +158,7 @@ build_default_device_arch = False
 build_pkgs_on_install = True
 ccache_size = 5G
 device = $DEVICE
-extra_packages = none
+extra_packages = $KEYBOARD_PACKAGE
 extra_space = 0
 hostname = maria-padilha
 is_default_channel = False
