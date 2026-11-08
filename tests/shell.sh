@@ -91,8 +91,35 @@ run_selftest bundled "$ROOT/shell/palettes/padilha-light.json"
 run_selftest guarded-broken "$ROOT/tests/shell/fixtures/broken-light.json"
 run_selftest fallback-missing "$tmp/does-not-exist/scheme.json"
 
+privacy_selftest() {
+  local secret="padilha-typed-text-${RANDOM}-$$"
+  local out="$tmp/selftest-privacy.log"
+  mkdir -p "$tmp/run-privacy"
+  chmod 700 "$tmp/run-privacy"
+  set +e
+  QT_QPA_PLATFORM=offscreen QSG_RHI_BACKEND=software \
+    XDG_RUNTIME_DIR="$tmp/run-privacy" \
+    PADILHA_SHELL_DEMO=1 PADILHA_SHELL_SELFTEST=1 PADILHA_SHELL_SURFACE=lock \
+    PADILHA_SHELL_QUERY="$secret" PADILHA_SHELL_PIN=9876 \
+    PADILHA_SCHEME="$ROOT/shell/palettes/padilha-light.json" \
+    timeout 45s quickshell -p "$ROOT/shell" --no-color >"$out" 2>&1
+  local rc=$?
+  set -e
+  if [ "$rc" -ne 0 ] || ! grep -q 'PADILHA_SHELL_SELFTEST_PASS' "$out"; then
+    grep -E 'selftest|SELFTEST|ERROR|WARN scene|TypeError|Cannot assign' "$out" >&2 || cat "$out" >&2
+    bad "typed-text logging self-test rc=$rc"
+  elif grep -qF "$secret" "$out" || grep -qF '9876' "$out"; then
+    bad "typed-text logging self-test found the query or PIN in shell output"
+  else
+    ok "typed-text logging self-test"
+  fi
+}
+
+log "== typed-text logging =="
+privacy_selftest
+
 shot() {
-  local label=$1 size=$2 surface=$3 scheme=$4 pin=${5:-}
+  local label=$1 size=$2 surface=$3 scheme=$4 pin=${5:-} osk=${6:-} purpose=${7:-}
   local image="$tmp/$label.png"
   local out="$tmp/$label.log"
   local width=${size%x*}
@@ -105,6 +132,8 @@ shot() {
     XDG_RUNTIME_DIR="$tmp/run-$label" \
     PADILHA_SHELL_DEMO=1 PADILHA_SHELL_SIZE="$size" PADILHA_SHELL_SURFACE="$surface" \
     PADILHA_SHELL_PIN="$pin" PADILHA_SCHEME="$scheme" PADILHA_SHELL_GRAB="$image" \
+    PADILHA_SHELL_OSK="$osk" PADILHA_SHELL_KEYBOARD="${osk:+1}" \
+    PADILHA_SHELL_KEYBOARD_PURPOSE="$purpose" \
     timeout 45s quickshell -p "$ROOT/shell" --no-color >"$out" 2>&1
   local rc=$?
   set -e
@@ -137,6 +166,13 @@ for surface in home launcher notifications lock; do
 done
 shot "home-720x1280-dark" 720x1280 home "$dark"
 shot "home-1280x720-dark" 1280x720 home "$dark"
+
+log "== fallback keyboard renders =="
+for purpose in text terminal url password; do
+  shot "keyboard-$purpose-720x1280" 720x1280 launcher "$light" "" inline "$purpose"
+  shot "keyboard-$purpose-1280x720" 1280x720 launcher "$light" "" inline "$purpose"
+done
+shot "keyboard-terminal-1280x720-dark" 1280x720 launcher "$dark" "" inline terminal
 
 if [ "$fail" -eq 0 ]; then
   log "all shell checks passed"

@@ -65,6 +65,8 @@ validate_config() {
     ALPINE_MIRROR PMOS_MIRROR
     BUILD_ROOT PMB_WORK PMB_CONFIG TOOLCHAIN_DIR OUT_DIR
     QEMU_MIN_VERSION QEMU_BOOT_TIMEOUT
+    KEYBOARD_CONFIG KEYBOARD_BACKEND KEYBOARD_PACKAGE
+    KEYBOARD_LAYOUT_NAME KEYBOARD_LAYOUT_DIR
   )
 
   for var in "${required[@]}"; do
@@ -105,6 +107,18 @@ validate_config() {
   [ "$DEVICE_PHYSICAL" = "true" ] || [ "$DEVICE_PHYSICAL" = "false" ] ||
     die "DEVICE_PHYSICAL must be true or false"
 
+  # ADR 0002: Squeekboard is the only supported OSK backend in M1. Keeping
+  # this check in the shared config gate makes a backend swap an explicit,
+  # reviewed change instead of an accidental image difference.
+  [ "$KEYBOARD_BACKEND" = "squeekboard" ] ||
+    die "ADR 0002 selects Squeekboard (got '$KEYBOARD_BACKEND')"
+  [ "$KEYBOARD_PACKAGE" = "squeekboard" ] ||
+    die "KEYBOARD_PACKAGE must be squeekboard (got '$KEYBOARD_PACKAGE')"
+  [ -f "$ROOT/$KEYBOARD_CONFIG" ] ||
+    die "missing keyboard config: $KEYBOARD_CONFIG"
+  [ -d "$ROOT/$KEYBOARD_LAYOUT_DIR" ] ||
+    die "missing keyboard layout directory: $KEYBOARD_LAYOUT_DIR"
+
   case "$PMAPORTS_REPO" in https://*) ;; *) die "PMAPORTS_REPO must use https" ;; esac
   case "$PMBOOTSTRAP_REPO" in https://*) ;; *) die "PMBOOTSTRAP_REPO must use https" ;; esac
 
@@ -128,8 +142,20 @@ validate_required_files() {
     README.md
     Makefile
     config/build.conf
+    config/keyboard/keyboard.conf
+    config/keyboard/layouts/us.yaml
+    config/keyboard/layouts/us_wide.yaml
+    config/keyboard/layouts/terminal/us.yaml
+    config/keyboard/layouts/terminal/us_wide.yaml
+    config/keyboard/layouts/url/us.yaml
+    config/keyboard/layouts/url/us_wide.yaml
+    config/keyboard/layouts/pin/us.yaml
+    config/keyboard/layouts/pin/us_wide.yaml
     docs/base-assumption.md
     docs/build.md
+    docs/adr/0002-on-screen-keyboard.md
+    docs/keyboard.md
+    docs/qemu-keyboard-checklist.md
     devices/qemu-aarch64/device.conf
     devices/qemu-aarch64/README.md
     devices/pine64-pinephone/device.conf
@@ -139,10 +165,12 @@ validate_required_files() {
     shell/palettes/padilha-light.json
     shell/README.md
     scripts/build.sh
+    scripts/install-squeekboard.sh
     scripts/lib.sh
     scripts/run-qemu.sh
     tests/all.sh
     tests/build.sh
+    tests/keyboard.sh
     tests/shell.sh
     .github/workflows/ci.yml
   )
@@ -153,9 +181,11 @@ validate_required_files() {
 
   local executable=(
     scripts/build.sh
+    scripts/install-squeekboard.sh
     scripts/run-qemu.sh
     tests/all.sh
     tests/build.sh
+    tests/keyboard.sh
     tests/shell.sh
   )
   for file in "${executable[@]}"; do

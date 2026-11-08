@@ -18,6 +18,7 @@ the implementation and records the scope.
 | Notifications | `surfaces/NotificationsSurface.qml` | live `NotificationServer` list, demo cards, dismiss and clear |
 | Lock | `surfaces/LockSurface.qml` | clock, privacy-safe notification count, PIN dots, large keypad |
 | Navigation | `components/NavBar.qml`, `components/SideRail.qml` | bottom bar in portrait, side rail in landscape |
+| Keyboard fallback | `components/KeyboardPanel.qml`, `components/KeyboardKey.qml`, `components/KeyboardLayouts.qml` | optional in-shell panel for the shell's own text fields |
 
 The shell is one fullscreen `FloatingWindow` (an `xdg-shell` surface), not a
 layer-shell panel. That is deliberate: it runs on a normal desktop compositor
@@ -57,6 +58,24 @@ font dependency, which keeps the shell usable in a minimal QEMU guest.
 - Actionable controls are at least 48 px; navigation is 72 px, quick actions are
   76-84 px and app tiles are 68-86 px.
 - `PADILHA_SHELL_SIZE=WxH` forces a windowed size for testing.
+- The shell body gets a bottom inset from `KeyboardPanel.qml` in inline mode,
+  or from `InputMethod.keyboardRectangle` when Squeekboard is open, so the
+  focused field and cursor remain visible above the keyboard in both
+  orientations.
+
+## Keyboard and text input
+
+Squeekboard is the primary keyboard for the Phosh image; the decision and
+integration notes are in [`docs/adr/0002-on-screen-keyboard.md`](../docs/adr/0002-on-screen-keyboard.md)
+and [`docs/keyboard.md`](../docs/keyboard.md). The shell registers a focused
+`TextInput` with `ShellState.attachKeyboard()` and asks Qt's input method to
+show/hide; it does not implement a system input method.
+
+`KeyboardPanel.qml` is an opt-in fallback for the shell's own fields and for
+offscreen/desktop development. It commits text directly to the focused
+`TextInput`, never takes focus itself, and does not write or log that text. The
+fallback layout is chosen per purpose (`text`, `terminal`, `url`, `password`)
+and uses a shorter key row in landscape.
 
 ## Prototype controls
 
@@ -67,6 +86,9 @@ font dependency, which keeps the shell usable in a minimal QEMU guest.
 - Tap Lock in the quick actions or navigation. Any four digits unlock; the PIN
   is a UI stub, not authentication.
 - Focus toggles a local do-not-disturb flag and never touches system settings.
+- Tap the launcher search field to focus it. In compositor mode Squeekboard
+  opens; with `PADILHA_SHELL_OSK=inline` the fallback panel opens. Tap the
+  down-arrow key or outside the field to hide it.
 - `qs ipc call padilha-shell <home|launcher|notifications|lock|unlock|demoNotification|status>`
   drives the running shell.
 
@@ -85,11 +107,17 @@ These variables exist for reproducible screenshots and tests:
 | `PADILHA_SHELL_GRAB=/path.png` | render the shell to a PNG and exit |
 | `PADILHA_SHELL_GRAB_DELAY` | grab delay in ms (default 1200) |
 | `PADILHA_SHELL_SELFTEST=1` | run palette/state assertions and exit |
+| `PADILHA_SHELL_OSK=compositor\|inline\|auto\|off` | keyboard backend: Squeekboard/compositor (default), forced fallback, auto fallback, or no shell keyboard |
+| `PADILHA_SHELL_KEYBOARD=1` | force the fallback panel on, for screenshots/tests |
+| `PADILHA_SHELL_KEYBOARD_PURPOSE=text\|terminal\|url\|password` | initial fallback layout purpose |
+| `PADILHA_SHELL_KEYBOARD_VIEW=base\|upper\|numbers\|symbols` | initial fallback view |
+| `PADILHA_SHELL_KEYBOARD_INSET=0.0-0.60` | override the conservative compositor keyboard reserve |
 
 ## Verification
 
 ```sh
-make test            # repository checks, including tests/shell.sh
+make test            # repository checks, including tests/keyboard.sh and tests/shell.sh
+tests/keyboard.sh    # Squeekboard config/layouts/privacy and installer checks
 tests/shell.sh       # palette, contrast, qmllint, self-test, offscreen renders
 ```
 
@@ -103,6 +131,6 @@ still run.
 
 - device daemons, telephony, modem, suspend or power management integration
 - PAM, fingerprint or any real lock authentication
-- an on-screen keyboard implementation (the compositor/Phosh provides one; the
-  launcher search field requests focus normally)
+- a system-wide input method implementation (Squeekboard and Phosh provide it;
+  the QML fallback only types into the shell's own fields)
 - image packaging, flashing, partitioning or physical-device support claims

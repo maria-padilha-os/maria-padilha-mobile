@@ -29,6 +29,28 @@ ShellRoot {
     readonly property int targetHeight: root.parsedSize.height
     readonly property bool landscape: root.targetWidth > root.targetHeight
     readonly property bool fullScreen: root.sizeOverride.length === 0 && root.targetScreen !== null
+    // The body ends above the keyboard. Inline fallback height comes from the
+    // panel. A compositor keyboard may report a rectangle; if it does not
+    // (common for an external Wayland OSK), reserve a conservative fraction
+    // while a field is focused so the focused input cannot be covered.
+    readonly property real compositorKeyboardFraction: {
+        const override = parseFloat(Quickshell.env("PADILHA_SHELL_KEYBOARD_INSET") || "");
+        return isNaN(override)
+            ? (root.landscape ? 0.34 : 0.40)
+            : Math.max(0, Math.min(0.60, override));
+    }
+    readonly property real compositorKeyboardInset: {
+        if (Quickshell.env("QT_QPA_PLATFORM") === "offscreen")
+            return 0;
+        const reported = Math.min(state.externalKeyboardHeight, root.targetHeight * 0.45);
+        if (reported > 0)
+            return reported;
+        if (!state.keyboardRequested || state.keyboardMode === "inline" || state.keyboardMode === "off")
+            return 0;
+        return Math.round(root.targetHeight * root.compositorKeyboardFraction);
+    }
+    readonly property real keyboardInset: state.inlineKeyboardActive
+        ? keyboard.panelHeight : root.compositorKeyboardInset
     readonly property string grabPath: Quickshell.env("PADILHA_SHELL_GRAB") || ""
     readonly property int grabDelay: {
         const value = parseInt(Quickshell.env("PADILHA_SHELL_GRAB_DELAY") || "1200", 10);
@@ -81,6 +103,7 @@ ShellRoot {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
+                anchors.bottomMargin: root.keyboardInset
 
                 SideRail {
                     id: rail
@@ -173,6 +196,16 @@ ShellRoot {
                     }
                 }
             }
+
+            KeyboardPanel {
+                id: keyboard
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                landscape: root.landscape
+                theme: theme
+                state: state
+            }
         }
     }
 
@@ -212,7 +245,10 @@ ShellRoot {
                 battery: state.device.batteryLabel,
                 network: state.device.networkLabel,
                 palette: theme.source,
-                mode: theme.mode
+                mode: theme.mode,
+                keyboardMode: state.keyboardMode,
+                keyboardVisible: state.inlineKeyboardActive,
+                keyboardPurpose: state.keyboardPurpose
             });
         }
     }
@@ -261,6 +297,10 @@ ShellRoot {
             const pinOk = state.pin === "12";
             state.unlock();
             const unlockOk = !state.locked;
+            const termRows = state.keyboardLayouts.rowsFor("terminal", "base").join(" ");
+            const urlRows = state.keyboardLayouts.rowsFor("url", "base").join(" ");
+            const passwordRows = state.keyboardLayouts.rowsFor("password", "base").join(" ");
+            const keyboardAvoidanceOk = root.compositorKeyboardFraction > 0;
             const checks = [
                 ["theme-ready", theme.ready],
                 ["surface-text", theme.contrastRatio(theme.text, theme.surface) >= 4.5],
@@ -273,7 +313,13 @@ ShellRoot {
                 ["notification-clear", clearOk],
                 ["lock", lockOk],
                 ["pin-entry", pinOk],
-                ["unlock", unlockOk]
+                ["unlock", unlockOk],
+                ["keyboard-mode", ["compositor", "inline", "auto", "off"].includes(state.keyboardMode)],
+                ["keyboard-text", state.keyboardLayouts.rowsFor("text", "base").length === 4],
+                ["keyboard-terminal", termRows.includes("Tab") && termRows.includes("Ctrl") && termRows.includes("↑")],
+                ["keyboard-url", urlRows.includes("/") && urlRows.includes(":")],
+                ["keyboard-password", passwordRows.includes("1") && passwordRows.includes("BackSpace")],
+                ["keyboard-avoidance", keyboardAvoidanceOk]
             ];
             let failed = 0;
             for (const check of checks) {

@@ -1,13 +1,16 @@
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := check
 
-.PHONY: check test shell-test build build-dry-run boot qemu clean
+.PHONY: check test keyboard-test shell-test build build-dry-run boot qemu clean
 
 check:
 	@tests/build.sh
 
 test:
 	@tests/all.sh
+
+keyboard-test:
+	@tests/keyboard.sh
 
 shell-test:
 	@tests/shell.sh
