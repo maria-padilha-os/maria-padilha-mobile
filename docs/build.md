@@ -14,7 +14,9 @@ PinePhone target is documented but not built or flashed in this milestone.
 | `devices/<name>/device.conf` | Per-target device, UI and QEMU settings |
 | `devices/qemu-aarch64/` | First-class virtual target |
 | `devices/pine64-pinephone/` | Deferred physical reference; build refuses it |
+| `shell/` | Touch-first Quickshell prototype; not installed by the image builder yet |
 | `tests/build.sh` | Config/files/secrets/checksum gate (unprivileged) |
+| `tests/shell.sh` | Palette, QML lint, self-test and offscreen render checks |
 | `tests/all.sh` | Repository checks used by CI |
 
 ## Prerequisites
@@ -80,7 +82,9 @@ checked before use. `pmaports` is fetched at the exact commit and its
    SHA-256 checksum.
 
 No partitioner, bootloader installer or flasher is implemented here; the
-wrapper deliberately delegates image assembly to pmbootstrap.
+wrapper deliberately delegates image assembly to pmbootstrap. The `shell/`
+prototype is a separate Quickshell application and is not installed into the
+image by this builder yet.
 
 ## Booting in QEMU
 

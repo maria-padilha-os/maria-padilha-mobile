@@ -134,11 +134,16 @@ validate_required_files() {
     devices/qemu-aarch64/README.md
     devices/pine64-pinephone/device.conf
     devices/pine64-pinephone/README.md
+    shell/shell.qml
+    shell/components/Theme.qml
+    shell/palettes/padilha-light.json
+    shell/README.md
     scripts/build.sh
     scripts/lib.sh
     scripts/run-qemu.sh
     tests/all.sh
     tests/build.sh
+    tests/shell.sh
     .github/workflows/ci.yml
   )
 
@@ -151,6 +156,7 @@ validate_required_files() {
     scripts/run-qemu.sh
     tests/all.sh
     tests/build.sh
+    tests/shell.sh
   )
   for file in "${executable[@]}"; do
     [ -x "$ROOT/$file" ] || die "required file is not executable: $file"

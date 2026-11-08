@@ -47,6 +47,15 @@ if [ -s "$adr" ]; then
 fi
 check_text README.md "$adr" "README links the ADR"
 
+shell_readme=shell/README.md
+if [ -s "$shell_readme" ]; then echo "ok $shell_readme"; else echo "FAIL $shell_readme missing"; fail=1; fi
+check_text README.md "## Touch-first shell prototype" "README documents the shell prototype"
+check_text README.md "### Screenshot checklist" "README has the screenshot checklist"
+check_text README.md "quickshell -p" "README documents the shell launch"
+check_text README.md "$shell_readme" "README links the shell notes"
+check_text "$shell_readme" "## Palette wiring" "shell notes document palette wiring"
+check_text "$shell_readme" "## Verification" "shell notes document verification"
+
 
 if grep -q 'scripts/build.sh' README.md; then
   echo "ok README documents the build entry point"
@@ -66,6 +75,13 @@ if bash tests/build.sh; then
   echo "ok tests/build.sh"
 else
   echo "FAIL tests/build.sh"
+  fail=1
+fi
+
+if bash tests/shell.sh; then
+  echo "ok tests/shell.sh"
+else
+  echo "FAIL tests/shell.sh"
   fail=1
 fi
 
