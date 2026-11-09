@@ -83,7 +83,7 @@ Item {
                 width: 22
                 height: 18
                 name: root.state.device.batteryIcon
-                color: root.state.device.batteryPercent >= 0 && root.state.device.batteryPercent <= 20
+                color: root.state.device.batteryCritical || root.state.device.batteryLow
                     ? root.theme.danger : root.theme.text
                 level: root.state.device.batteryLevel
                 anchors.verticalCenter: parent.verticalCenter
@@ -98,8 +98,16 @@ Item {
             }
             Text {
                 text: root.state.device.batteryLabel
-                color: root.theme.textMuted
+                color: root.state.device.batteryCritical || root.state.device.batteryLow
+                    ? root.theme.danger : root.theme.textMuted
                 font.pixelSize: 12
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Text {
+                visible: root.landscape && root.state.device.batteryTimeLabel.length > 0
+                text: root.state.device.batteryTimeLabel
+                color: root.theme.textMuted
+                font.pixelSize: 11
                 anchors.verticalCenter: parent.verticalCenter
             }
         }

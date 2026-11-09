@@ -13,3 +13,9 @@ this milestone does not build, partition, flash or boot a phone:
 
 The QEMU target must pass first. Physical work resumes only as a separate,
 explicitly reviewed task.
+
+Charge-threshold support is a per-kernel property. The policy in
+[`config/power/power.conf`](../../config/power/power.conf) only writes standard
+`charge_control_*_threshold` attributes; if the PinePhone kernel does not expose
+them, the helper is a documented no-op. No physical battery, thermal or suspend
+result is claimed here.

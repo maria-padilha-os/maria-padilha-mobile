@@ -85,6 +85,13 @@ else
   fail=1
 fi
 
+if bash tests/power.sh; then
+  echo "ok tests/power.sh"
+else
+  echo "FAIL tests/power.sh"
+  fail=1
+fi
+
 if bash tests/shell.sh; then
   echo "ok tests/shell.sh"
 else

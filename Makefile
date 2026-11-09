@@ -1,7 +1,7 @@
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := check
 
-.PHONY: check test keyboard-test shell-test build build-dry-run boot qemu clean
+.PHONY: check test keyboard-test shell-test power-test build build-dry-run boot qemu clean
 
 check:
 	@tests/build.sh
@@ -14,6 +14,15 @@ keyboard-test:
 
 shell-test:
 	@tests/shell.sh
+
+power-test:
+	@tests/power.sh
+
+power-diagnostic:
+	@scripts/power-diagnostic.sh
+
+stage-power:
+	@scripts/stage-power-config.sh
 
 build:
 	@scripts/build.sh

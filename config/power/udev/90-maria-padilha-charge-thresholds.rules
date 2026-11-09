@@ -1,0 +1,4 @@
+# Request one oneshot threshold scan when a power_supply appears. The
+# systemd-sleep post hook handles re-applying after resume. This is not a
+# polling loop.
+ACTION=="add", SUBSYSTEM=="power_supply", TAG+="systemd", ENV{SYSTEMD_WANTS}+="maria-padilha-charge-thresholds.service"

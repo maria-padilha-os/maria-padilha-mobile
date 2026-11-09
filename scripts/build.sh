@@ -72,6 +72,8 @@ if [ "$DRY_RUN" = true ]; then
   log "would fetch pmaports $PMAPORTS_COMMIT"
   log "would install: $DEVICE ($DEVICE_ARCH, $UI, $INIT_SYSTEM)"
   log "would install keyboard: $KEYBOARD_BACKEND ($KEYBOARD_PACKAGE)"
+  log "would install power packages: $POWER_PACKAGES"
+  log "would stage power policy: sleep, logind, charge-threshold oneshot, udev rule"
   log "would write image: out/$IMAGE_NAME"
   log "dry run complete; no network or privileged command used"
   exit 0
@@ -158,7 +160,7 @@ build_default_device_arch = False
 build_pkgs_on_install = True
 ccache_size = 5G
 device = $DEVICE
-extra_packages = $KEYBOARD_PACKAGE
+extra_packages = $KEYBOARD_PACKAGE $POWER_PACKAGES
 extra_space = 0
 hostname = maria-padilha
 is_default_channel = False

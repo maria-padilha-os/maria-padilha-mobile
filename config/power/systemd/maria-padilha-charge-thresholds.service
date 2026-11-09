@@ -1,0 +1,16 @@
+# Apply the configured charge window only when the kernel exposes standard
+# power_supply threshold attributes. This is a oneshot unit: it exits after one
+# scan and has no Restart= and no timer, so it cannot keep the phone awake.
+[Unit]
+Description=Maria Padilha Mobile charge thresholds
+Documentation=file:///usr/share/doc/maria-padilha-mobile/power.md
+ConditionPathIsDirectory=/sys/class/power_supply
+ConditionPathExists=/etc/maria-padilha/power.conf
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/maria-padilha/power-charge-thresholds --apply
+
+[Install]
+WantedBy=multi-user.target

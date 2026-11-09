@@ -12,7 +12,7 @@ the implementation and records the scope.
 
 | Surface | File | What it does |
 | --- | --- | --- |
-| Status bar | `components/StatusBar.qml` | clock, network, battery, charging state and notification badge |
+| Status bar | `components/StatusBar.qml` | clock, network, UPower battery/charging state, low-battery colour and notification badge |
 | Home | `surfaces/HomeSurface.qml` | large clock, quick actions, notification summary, pinned apps |
 | Launcher | `surfaces/LauncherSurface.qml` | searchable app grid, real `DesktopEntry` launch in normal mode |
 | Notifications | `surfaces/NotificationsSurface.qml` | live `NotificationServer` list, demo cards, dismiss and clear |
@@ -25,6 +25,20 @@ layer-shell panel. That is deliberate: it runs on a normal desktop compositor
 and on Phosh in the QEMU guest without requiring a wlr-layer-shell extension.
 The trade-off is that Phosh's own top bar remains above it and the shell cannot
 reserve a work area for other applications.
+
+## Power status
+
+`components/DeviceStatus.qml` reads `UPower.displayDevice` and treats any ready,
+present `UPowerDeviceType.Battery` as the display battery. It deliberately does
+not depend on UPower's `isLaptopBattery`, which is false on phones. The status
+bar shows percentage, charging, low/critical colour and, in landscape, time to
+empty or full when UPower provides it. With no battery (the usual QEMU case)
+the label falls back to `AC` and a power icon.
+
+The shell is read-only with respect to power: it never writes a charge
+threshold and never suspends the machine. The image-level policy, diagnostics
+and QEMU suspend gate are in [`docs/power.md`](../docs/power.md) and
+[`docs/qemu-power-checklist.md`](../docs/qemu-power-checklist.md).
 
 ## Palette wiring
 
@@ -129,7 +143,8 @@ still run.
 
 ## Out of scope
 
-- device daemons, telephony, modem, suspend or power management integration
+- system power daemons, telephony, modem, suspend/resume control or
+  charge-threshold writes (the shell only reads UPower status)
 - PAM, fingerprint or any real lock authentication
 - a system-wide input method implementation (Squeekboard and Phosh provide it;
   the QML fallback only types into the shell's own fields)

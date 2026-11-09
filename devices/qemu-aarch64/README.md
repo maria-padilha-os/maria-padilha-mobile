@@ -23,3 +23,9 @@ scripts/run-qemu.sh
 
 The target is deliberately not `qemu-amd64`: a different architecture would
 not qualify an ARM64 phone image.
+
+QEMU normally exposes no phone battery or charger, so the power diagnostic
+reports an AC-only guest with a no-battery warning. That is expected. Use the
+sysfs fixtures in `tests/power.sh` for battery/charge-threshold checks and the
+[manual QEMU power checklist](../../docs/qemu-power-checklist.md) for the
+suspend/resume gate. Do not run the suspend step on the host laptop.

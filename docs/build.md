@@ -12,12 +12,19 @@ PinePhone target is documented but not built or flashed in this milestone.
 | `scripts/lib.sh` | Shared config, validation and checksum helpers |
 | `config/build.conf` | Pinned release, toolchain commits and mirrors |
 | `config/keyboard/keyboard.conf` | Squeekboard package, layouts, orientation and privacy policy |
+| `config/power/power.conf` | Battery, charge-threshold, thermal and suspend policy |
+| `config/power/systemd/` | Sleep/logind drop-ins and the charge-threshold oneshot |
+| `config/power/udev/` | `power_supply` add rule for the threshold helper |
+| `scripts/power-diagnostic.sh` | One-shot read-only battery/thermal/suspend report |
+| `scripts/power-charge-thresholds.sh` | Hardware-gated 20–80% threshold helper |
+| `scripts/stage-power-config.sh` | Stage the power tree; never touches the live system |
 | `devices/<name>/device.conf` | Per-target device, UI and QEMU settings |
 | `devices/qemu-aarch64/` | First-class virtual target |
 | `devices/pine64-pinephone/` | Deferred physical reference; build refuses it |
 | `shell/` | Touch-first Quickshell prototype; not installed by the image builder yet |
 | `tests/build.sh` | Config/files/secrets/checksum gate (unprivileged) |
 | `tests/keyboard.sh` | Keyboard config/layout/privacy and installer checks |
+| `tests/power.sh` | Power config, sysfs fixtures, threshold no-op, suspend guard and staging |
 | `tests/shell.sh` | Palette, QML lint, self-test and offscreen render checks |
 | `tests/all.sh` | Repository checks used by CI |
 
@@ -43,7 +50,10 @@ make build-dry-run         # print the pinned build plan
 make build                 # full image build (builder with sudo/doas)
 make boot                  # build, then boot with QEMU
 make qemu                  # boot an already-built image
-make test                  # repository CI checks, including keyboard checks
+make test                  # repository CI checks, including keyboard and power checks
+make power-test            # power config, fixtures, threshold no-op, suspend guard
+make power-diagnostic      # one-shot read-only battery/thermal/suspend report
+make stage-power           # stage power drop-ins/helper under .scratch/power-root
 ```
 
 Direct equivalents:
@@ -82,10 +92,17 @@ checked before use. `pmaports` is fetched at the exact commit and its
 2. Refuses to run as root or to build a physical target.
 3. Fetches pinned `pmbootstrap` and `pmaports` into `.scratch/build/`.
 4. Writes a pmbootstrap config for the device, Phosh and systemd, with the
-   Squeekboard package in `extra_packages`.
+   Squeekboard, UPower and lm-sensors packages in `extra_packages`.
 5. Runs `pmbootstrap install --no-split` to create the QEMU image.
 6. Exports the image to `out/maria-padilha-qemu-aarch64.img` and writes its
    SHA-256 checksum.
+
+The full build does not install the power systemd/udev tree into the image by
+itself. `scripts/stage-power-config.sh --dest <rootfs>` fills a staging tree
+that the image packaging step can copy in; this keeps the unprivileged wrapper
+from writing to host `/etc` or `/usr`. The battery, thermal and suspend policy
+and its known limitations are in [`docs/power.md`](power.md). The manual QEMU
+gate is [`docs/qemu-power-checklist.md`](qemu-power-checklist.md).
 
 No partitioner, bootloader installer or flasher is implemented here; the
 wrapper deliberately delegates image assembly to pmbootstrap. The `shell/`
@@ -121,6 +138,7 @@ reaches the login/session is the milestone gate, not a performance benchmark.
 ## Out of scope
 
 - flashing, partitioning or writing to physical devices
+- a polling thermal/power daemon, a timer unit or a laptop suspend test
 - bootloader unlock/bypass instructions
 - claiming PinePhone support before the physical checklist passes
 - Android userspaces or Android compatibility layers

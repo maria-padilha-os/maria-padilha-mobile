@@ -41,6 +41,18 @@ bars, password fields and PINs. The integration notes are in
 [manual QEMU checklist](docs/qemu-keyboard-checklist.md). No physical-device
 claim is made.
 
+**Power, battery, thermal and suspend policy in place.** UPower supplies
+battery/charging state to Phosh and the shell. A hardware-gated helper applies
+a 20–80% charge window only when the kernel exposes the standard
+`charge_control_*_threshold` attributes; unsupported hardware is a documented
+no-op. A read-only diagnostic reports battery, charger, threshold and thermal
+state. The suspend policy allows suspend but disables hibernation, hybrid sleep
+and suspend-then-hibernate, and leaves idle handling to Phosh. The policy,
+known limitations and the manual QEMU gate are in
+[`docs/power.md`](docs/power.md) and
+[`docs/qemu-power-checklist.md`](docs/qemu-power-checklist.md). Suspend was not
+tested on the reference laptop, and no physical-device support is claimed.
+
 ## Touch-first shell prototype
 
 The shell is a single fullscreen `xdg-shell` window. That choice keeps it
@@ -189,6 +201,42 @@ PNG has the expected dimensions and is not a blank surface. The real
 Squeekboard session is verified separately with the
 [manual QEMU checklist](docs/qemu-keyboard-checklist.md).
 
+## Power, battery and thermal
+
+The image adds `upower` and `lm-sensors` to its package set. The shell treats a
+present phone battery as the display battery instead of relying on UPower's
+laptop flag, shows charging/low/critical state and remaining time when UPower
+provides it, and falls back to `AC` when no battery exists (as in QEMU).
+
+The charge-threshold helper is a single scan, not a daemon:
+
+```sh
+# read-only plan; this is the only mode the tests use
+scripts/power-charge-thresholds.sh --dry-run
+
+# one-shot systemd/udev/resume integration is staged, not installed live
+scripts/stage-power-config.sh --dest .scratch/power-root
+```
+
+The service is `Type=oneshot`, the udev rule only handles `add`, and the sleep
+hook only runs after resume. There is no timer and no polling loop. See
+[`docs/power.md`](docs/power.md) for the full policy, the staging boundary and
+the known limitations.
+
+The read-only diagnostic works in the checkout, in the guest and on a supported
+device:
+
+```sh
+scripts/power-diagnostic.sh          # human-readable, one scan
+scripts/power-diagnostic.sh --json   # machine-readable
+scripts/power-diagnostic.sh --strict # exit 1 if warnings are present
+make power-test                      # fixture, no-op, guard and staging checks
+```
+
+The suspend-target guard refuses laptops and desktops; use QEMU or a supported
+device and follow the [manual QEMU power checklist](docs/qemu-power-checklist.md).
+The repository never suspends the reference laptop.
+
 ## Goals
 
 - touch-first status bar, launcher, app grid, notifications, and lock surface
@@ -218,11 +266,15 @@ make build        # full QEMU image build on a builder with sudo/doas
 make qemu         # boot the checked image with QEMU
 make test         # CI checks
 make keyboard-test # Squeekboard config/layout/privacy checks only
+make power-test    # power config, diagnostic fixtures, threshold no-op, suspend guard
+make power-diagnostic # one-shot read-only battery/thermal/suspend report
+make stage-power   # stage systemd/udev/helper files under .scratch/power-root
 ```
 
 Pinned `pmbootstrap`/`pmaports` inputs live in
 [`config/build.conf`](config/build.conf), the Squeekboard package/layout policy
-lives in [`config/keyboard/keyboard.conf`](config/keyboard/keyboard.conf), and
-the QEMU target lives in [`devices/qemu-aarch64/`](devices/qemu-aarch64/).
-Flashing and physical partitioning are out of scope; only the QEMU target is
-built in this milestone.
+lives in [`config/keyboard/keyboard.conf`](config/keyboard/keyboard.conf), the
+battery/thermal/suspend policy lives in
+[`config/power/power.conf`](config/power/power.conf), and the QEMU target lives
+in [`devices/qemu-aarch64/`](devices/qemu-aarch64/). Flashing and physical
+partitioning are out of scope; only the QEMU target is built in this milestone.

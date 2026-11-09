@@ -67,6 +67,12 @@ validate_config() {
     QEMU_MIN_VERSION QEMU_BOOT_TIMEOUT
     KEYBOARD_CONFIG KEYBOARD_BACKEND KEYBOARD_PACKAGE
     KEYBOARD_LAYOUT_NAME KEYBOARD_LAYOUT_DIR
+    POWER_CONFIG POWER_CONFIG_VERSION POWER_PACKAGES POWER_CHARGE_THRESHOLD_MODE
+    POWER_CHARGE_THRESHOLD_START POWER_CHARGE_THRESHOLD_END
+    POWER_THERMAL_WARN_C POWER_THERMAL_CRITICAL_C
+    POWER_SUSPEND_POLICY POWER_SUSPEND_ALLOW_HIBERNATE
+    POWER_SUSPEND_ALLOW_HYBRID_SLEEP POWER_SUSPEND_ALLOW_SUSPEND_THEN_HIBERNATE
+    POWER_IDLE_ACTION POWER_DIAGNOSTIC_READ_ONLY
   )
 
   for var in "${required[@]}"; do
@@ -119,6 +125,45 @@ validate_config() {
   [ -d "$ROOT/$KEYBOARD_LAYOUT_DIR" ] ||
     die "missing keyboard layout directory: $KEYBOARD_LAYOUT_DIR"
 
+  # Power policy: threshold writes stay hardware-gated, hibernation stays off,
+  # and the diagnostic stays read-only. A future config change that relaxes
+  # these must update this gate and docs/power.md together.
+  [ -f "$POWER_CONFIG" ] ||
+    die "missing power config: $POWER_CONFIG"
+  [ "$POWER_CONFIG_VERSION" = "1" ] ||
+    die "unsupported power config version: $POWER_CONFIG_VERSION"
+  [ "$POWER_CHARGE_THRESHOLD_MODE" = "off" ] ||
+    [ "$POWER_CHARGE_THRESHOLD_MODE" = "apply-if-supported" ] ||
+    die "POWER_CHARGE_THRESHOLD_MODE must be off or apply-if-supported"
+  [[ "$POWER_CHARGE_THRESHOLD_START" =~ ^[0-9]+$ ]] ||
+    die "POWER_CHARGE_THRESHOLD_START must be an integer"
+  [[ "$POWER_CHARGE_THRESHOLD_END" =~ ^[0-9]+$ ]] ||
+    die "POWER_CHARGE_THRESHOLD_END must be an integer"
+  [ "$POWER_CHARGE_THRESHOLD_START" -ge 0 ] &&
+    [ "$POWER_CHARGE_THRESHOLD_END" -le 100 ] &&
+    [ "$POWER_CHARGE_THRESHOLD_START" -lt "$POWER_CHARGE_THRESHOLD_END" ] ||
+    die "power charge window must satisfy 0 <= start < end <= 100"
+  [[ "$POWER_THERMAL_WARN_C" =~ ^[0-9]+$ ]] ||
+    die "POWER_THERMAL_WARN_C must be an integer"
+  [[ "$POWER_THERMAL_CRITICAL_C" =~ ^[0-9]+$ ]] ||
+    die "POWER_THERMAL_CRITICAL_C must be an integer"
+  [ "$POWER_THERMAL_WARN_C" -lt "$POWER_THERMAL_CRITICAL_C" ] ||
+    die "POWER_THERMAL_WARN_C must be lower than POWER_THERMAL_CRITICAL_C"
+  [ "$POWER_SUSPEND_ALLOW_HIBERNATE" = "false" ] &&
+    [ "$POWER_SUSPEND_ALLOW_HYBRID_SLEEP" = "false" ] &&
+    [ "$POWER_SUSPEND_ALLOW_SUSPEND_THEN_HIBERNATE" = "false" ] ||
+    die "hibernation, hybrid sleep and suspend-then-hibernate must stay disabled"
+  [ "$POWER_IDLE_ACTION" = "ignore" ] ||
+    die "logind IdleAction must be ignore; Phosh owns idle suspend"
+  [ "$POWER_DIAGNOSTIC_READ_ONLY" = "true" ] ||
+    die "the power diagnostic must stay read-only"
+
+  local package
+  for package in $POWER_PACKAGES; do
+    [[ "$package" =~ ^[a-z0-9][a-z0-9.+_-]*$ ]] ||
+      die "invalid power package name: '$package'"
+  done
+
   case "$PMAPORTS_REPO" in https://*) ;; *) die "PMAPORTS_REPO must use https" ;; esac
   case "$PMBOOTSTRAP_REPO" in https://*) ;; *) die "PMBOOTSTRAP_REPO must use https" ;; esac
 
@@ -156,6 +201,13 @@ validate_required_files() {
     docs/adr/0002-on-screen-keyboard.md
     docs/keyboard.md
     docs/qemu-keyboard-checklist.md
+    docs/power.md
+    docs/qemu-power-checklist.md
+    config/power/power.conf
+    config/power/systemd/maria-padilha-charge-thresholds.service
+    config/power/systemd/sleep.conf.d/10-maria-padilha-sleep.conf
+    config/power/systemd/logind.conf.d/10-maria-padilha-power.conf
+    config/power/udev/90-maria-padilha-charge-thresholds.rules
     devices/qemu-aarch64/device.conf
     devices/qemu-aarch64/README.md
     devices/pine64-pinephone/device.conf
@@ -167,10 +219,16 @@ validate_required_files() {
     scripts/build.sh
     scripts/install-squeekboard.sh
     scripts/lib.sh
+    scripts/power-charge-thresholds.sh
+    scripts/power-diagnostic.sh
+    scripts/power-sleep-hook.sh
+    scripts/power-suspend-check.sh
     scripts/run-qemu.sh
+    scripts/stage-power-config.sh
     tests/all.sh
     tests/build.sh
     tests/keyboard.sh
+    tests/power.sh
     tests/shell.sh
     .github/workflows/ci.yml
   )
@@ -182,10 +240,16 @@ validate_required_files() {
   local executable=(
     scripts/build.sh
     scripts/install-squeekboard.sh
+    scripts/power-charge-thresholds.sh
+    scripts/power-diagnostic.sh
+    scripts/power-sleep-hook.sh
+    scripts/power-suspend-check.sh
     scripts/run-qemu.sh
+    scripts/stage-power-config.sh
     tests/all.sh
     tests/build.sh
     tests/keyboard.sh
+    tests/power.sh
     tests/shell.sh
   )
   for file in "${executable[@]}"; do

@@ -12,11 +12,58 @@ QtObject {
     property bool demo: false
 
     readonly property var battery: UPower.displayDevice
-    readonly property bool hasBattery: demo || (battery !== null && battery !== undefined && battery.ready && battery.isLaptopBattery)
+    // Phones expose a normal Battery device, not UPower's isLaptopBattery
+    // flag. Treat any ready, present battery as the display battery instead of
+    // requiring the laptop heuristic.
+    readonly property bool hasBattery: demo || (battery !== null && battery !== undefined &&
+        battery.ready && battery.isPresent && battery.type === UPowerDeviceType.Battery)
     readonly property int batteryPercent: demo ? 82 : (hasBattery ? Math.round(battery.percentage * 100) : -1)
+    readonly property string batteryState: {
+        if (demo)
+            return "Charging";
+        if (!hasBattery)
+            return "Unknown";
+        switch (battery.state) {
+        case UPowerDeviceState.Charging:
+            return "Charging";
+        case UPowerDeviceState.Discharging:
+            return "Discharging";
+        case UPowerDeviceState.Empty:
+            return "Empty";
+        case UPowerDeviceState.FullyCharged:
+            return "Fully charged";
+        case UPowerDeviceState.PendingCharge:
+            return "Pending charge";
+        case UPowerDeviceState.PendingDischarge:
+            return "Pending discharge";
+        default:
+            return "Unknown";
+        }
+    }
     readonly property bool charging: demo
         ? true
         : (hasBattery ? [UPowerDeviceState.Charging, UPowerDeviceState.FullyCharged, UPowerDeviceState.PendingCharge].includes(battery.state) : false)
+    readonly property bool externalPower: demo ? true : !UPower.onBattery
+    readonly property bool batteryLow: batteryPercent >= 0 && batteryPercent <= 20 && !charging
+    readonly property bool batteryCritical: batteryPercent >= 0 && batteryPercent <= 5 && !charging
+    readonly property real batterySeconds: {
+        if (demo)
+            return charging ? 5400 : 21600;
+        if (!hasBattery)
+            return -1;
+        const seconds = charging ? battery.timeToFull : battery.timeToEmpty;
+        return (seconds > 0 && isFinite(seconds)) ? seconds : -1;
+    }
+    readonly property string batteryTimeLabel: {
+        const seconds = batterySeconds;
+        if (!(seconds > 0))
+            return "";
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.round((seconds % 3600) / 60);
+        if (hours > 0)
+            return hours + "h " + minutes + "m";
+        return minutes + "m";
+    }
     readonly property string batteryLabel: batteryPercent >= 0 ? batteryPercent + "%" : "AC"
     readonly property string batteryIcon: !hasBattery && !demo ? "power" : "battery"
     readonly property real batteryLevel: batteryPercent >= 0 ? batteryPercent / 100 : 1.0
