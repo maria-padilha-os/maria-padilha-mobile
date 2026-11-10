@@ -19,3 +19,11 @@ Charge-threshold support is a per-kernel property. The policy in
 `charge_control_*_threshold` attributes; if the PinePhone kernel does not expose
 them, the helper is a documented no-op. No physical battery, thermal or suspend
 result is claimed here.
+
+The image installs ModemManager as the modem stack. PinePhone-class devices are
+expected to expose a modem through ModemManager, but SIM unlock, carrier
+registration, calls, SMS, mobile data and call audio are **not** validated or
+claimed by this checkout. The calls/SMS UI is tested against a real
+ModemManager session with no modem and an emulated D-Bus service; see
+[`docs/modem.md`](../../docs/modem.md). A physical telephony result requires the
+manual checklist on a real unit after the QEMU gate.

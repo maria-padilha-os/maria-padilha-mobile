@@ -80,15 +80,16 @@ def read_png(path: Path) -> tuple[int, int, int]:
 
 
 def main() -> int:
-    if len(sys.argv) != 4:
-        print("usage: check_png.py IMAGE WIDTH HEIGHT", file=sys.stderr)
+    if len(sys.argv) not in (4, 5):
+        print("usage: check_png.py IMAGE WIDTH HEIGHT [MIN_COLOURS]", file=sys.stderr)
         return 2
     path = Path(sys.argv[1])
     expected_width, expected_height = int(sys.argv[2]), int(sys.argv[3])
+    minimum = int(sys.argv[4]) if len(sys.argv) == 5 else 8
     width, height, colours = read_png(path)
     assert (width, height) == (expected_width, expected_height), \
         f"{path}: {width}x{height}, expected {expected_width}x{expected_height}"
-    assert colours >= 8, f"{path}: only {colours} sampled colours; surface looks blank"
+    assert colours >= minimum, f"{path}: only {colours} sampled colours; surface looks blank"
     print(f"ok {path.name} {width}x{height}, {colours} sampled colours")
     return 0
 

@@ -286,6 +286,77 @@ Item {
                 ctx.lineTo(12.7, 10.2);
                 ctx.closePath();
                 ctx.fill();
+            } else if (root.name === "phone") {
+                ctx.beginPath();
+                ctx.moveTo(6.2, 3.8);
+                ctx.lineTo(9.8, 5.2);
+                ctx.lineTo(9.2, 8.2);
+                ctx.quadraticCurveTo(11.6, 12.8, 15.8, 14.8);
+                ctx.lineTo(18.8, 14.2);
+                ctx.lineTo(20.2, 17.8);
+                ctx.quadraticCurveTo(17.8, 20.6, 13.8, 19.4);
+                ctx.quadraticCurveTo(7.6, 17.2, 4.6, 11.0);
+                ctx.quadraticCurveTo(3.4, 7.0, 6.2, 3.8);
+                ctx.closePath();
+                ctx.stroke();
+            } else if (root.name === "message") {
+                root._roundRect(ctx, 3.5, 4.5, 17, 12.5, 4);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(8.0, 17.0);
+                ctx.lineTo(8.0, 21.0);
+                ctx.lineTo(12.5, 17.0);
+                ctx.stroke();
+                for (const x of [8.5, 12.0, 15.5]) {
+                    ctx.beginPath();
+                    ctx.arc(x, 10.7, 1.05, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            } else if (root.name === "send") {
+                ctx.beginPath();
+                ctx.moveTo(3.2, 11.5);
+                ctx.lineTo(21.0, 3.5);
+                ctx.lineTo(14.3, 20.5);
+                ctx.lineTo(11.4, 13.6);
+                ctx.closePath();
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(11.4, 13.6);
+                ctx.lineTo(21.0, 3.5);
+                ctx.stroke();
+            } else if (root.name === "signal") {
+                const filled = root.level >= 0
+                    ? Math.max(0, Math.min(4, Math.ceil(root.level * 4))) : 0;
+                for (let i = 0; i < 4; ++i) {
+                    const x = 4.0 + i * 4.6;
+                    const height = 4.0 + i * 3.4;
+                    root._roundRect(ctx, x, 20.0 - height, 3.0, height, 0.9);
+                    if (i < filled)
+                        ctx.fill();
+                    else
+                        ctx.stroke();
+                }
+            } else if (root.name === "delete") {
+                ctx.beginPath();
+                ctx.moveTo(5.0, 7.0);
+                ctx.lineTo(19.0, 7.0);
+                ctx.moveTo(9.0, 7.0);
+                ctx.lineTo(9.0, 4.0);
+                ctx.lineTo(15.0, 4.0);
+                ctx.lineTo(15.0, 7.0);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(6.5, 7.0);
+                ctx.lineTo(7.5, 20.0);
+                ctx.lineTo(16.5, 20.0);
+                ctx.lineTo(17.5, 7.0);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(10.5, 10.0);
+                ctx.lineTo(11.0, 17.0);
+                ctx.moveTo(13.5, 10.0);
+                ctx.lineTo(13.0, 17.0);
+                ctx.stroke();
             } else if (root.name === "arrow_up") {
                 ctx.beginPath();
                 ctx.moveTo(12, 20);

@@ -2,7 +2,9 @@
 
 A small touch-first Quickshell shell for the Maria Padilha mobile work. It is a
 prototype: it does not replace Phosh, does not authenticate users, does not
-talk to device daemons and does not flash anything.
+implement device daemons and does not flash anything. It reads UPower and
+NetworkManager status and talks to ModemManager through the small telephony
+bridge for calls and SMS.
 
 The launch instructions and the required screenshot checklist live in the
 [repository README](../README.md#touch-first-shell-prototype). This file maps
@@ -16,6 +18,8 @@ the implementation and records the scope.
 | Home | `surfaces/HomeSurface.qml` | large clock, quick actions, notification summary, pinned apps |
 | Launcher | `surfaces/LauncherSurface.qml` | searchable app grid, real `DesktopEntry` launch in normal mode |
 | Notifications | `surfaces/NotificationsSurface.qml` | live `NotificationServer` list, demo cards, dismiss and clear |
+| Calls | `surfaces/CallsSurface.qml`, `components/CallCard.qml`, `components/DialPad.qml` | ModemManager Voice calls, dial/incoming/active states, graceful no-modem states |
+| Messages | `surfaces/MessagesSurface.qml`, `components/SmsCard.qml` | ModemManager Messaging list, reply/send/delete, in-memory only |
 | Lock | `surfaces/LockSurface.qml` | clock, privacy-safe notification count, PIN dots, large keypad |
 | Navigation | `components/NavBar.qml`, `components/SideRail.qml` | bottom bar in portrait, side rail in landscape |
 | Keyboard fallback | `components/KeyboardPanel.qml`, `components/KeyboardKey.qml`, `components/KeyboardLayouts.qml` | optional in-shell panel for the shell's own text fields |
@@ -39,6 +43,23 @@ The shell is read-only with respect to power: it never writes a charge
 threshold and never suspends the machine. The image-level policy, diagnostics
 and QEMU suspend gate are in [`docs/power.md`](../docs/power.md) and
 [`docs/qemu-power-checklist.md`](../docs/qemu-power-checklist.md).
+
+## Cellular modem and telephony
+
+`components/TelephonyService.qml` owns one small bridge process
+(`scripts/telephony-bridge.py`) and projects ModemManager's Voice/Messaging
+D-Bus objects into QML. The shell does not implement a modem protocol, own a
+second daemon or persist messages. `CallsSurface.qml` and
+`MessagesSurface.qml` render `no-modem`, `unavailable`, `locked`, `searching`
+and capability-limited states with the shared `TelephonyStatusCard.qml`.
+In demo mode the same surfaces use deterministic in-memory data and do not
+start the bridge.
+
+Call audio, emergency calls and SIM PIN/PUK are out of scope; the calls UI
+creates, answers and hangs up ModemManager call objects, but does not claim a
+working audio path. The full policy is in
+[`docs/modem.md`](../docs/modem.md) and
+[ADR 0003](../docs/adr/0003-modem-and-telephony.md).
 
 ## Palette wiring
 
@@ -97,6 +118,11 @@ and uses a shorter key row in landscape.
   fixed catalogue and only show a toast.
 - Tap the bell in the status bar, the summary card or the Alerts nav item to open
   the notification centre. Dismiss with the 48 px close button or clear all.
+- Open Calls or Messages from the pinned apps, the launcher, or
+  `qs ipc call padilha-shell calls|messages`. The dial pad and compose fields
+  are disabled when ModemManager reports no usable voice or SMS capability.
+- Incoming calls and SMS add a notification and a toast. The lock surface still
+  shows only the count, never a message body or number.
 - Tap Lock in the quick actions or navigation. Any four digits unlock; the PIN
   is a UI stub, not authentication.
 - Focus toggles a local do-not-disturb flag and never touches system settings.
@@ -126,13 +152,18 @@ These variables exist for reproducible screenshots and tests:
 | `PADILHA_SHELL_KEYBOARD_PURPOSE=text\|terminal\|url\|password` | initial fallback layout purpose |
 | `PADILHA_SHELL_KEYBOARD_VIEW=base\|upper\|numbers\|symbols` | initial fallback view |
 | `PADILHA_SHELL_KEYBOARD_INSET=0.0-0.60` | override the conservative compositor keyboard reserve |
+| `PADILHA_TELEPHONY_DEMO=1\|0` | force deterministic in-memory telephony state, or force the real bridge |
+| `PADILHA_TELEPHONY_BACKEND=auto\|off` | start the bridge, or render the no-modem state without a process |
+| `PADILHA_TELEPHONY_BUS=session` | use the session bus for tests/emulation |
+| `PADILHA_TELEPHONY_MESSAGE=...` | add an in-memory demo message for the no-logging check |
 
 ## Verification
 
 ```sh
-make test            # repository checks, including tests/keyboard.sh and tests/shell.sh
+make test            # repository checks, including keyboard, modem and shell tests
 tests/keyboard.sh    # Squeekboard config/layouts/privacy and installer checks
-tests/shell.sh       # palette, contrast, qmllint, self-test, offscreen renders
+tests/modem.sh       # ModemManager policy, no-modem daemon, emulated call/SMS flow
+tests/shell.sh       # palette, contrast, qmllint, self-test, telephony renders
 ```
 
 The offscreen render path sets `QT_QPA_PLATFORM=offscreen` and
@@ -143,8 +174,10 @@ still run.
 
 ## Out of scope
 
-- system power daemons, telephony, modem, suspend/resume control or
-  charge-threshold writes (the shell only reads UPower status)
+- system power daemons, suspend/resume control or charge-threshold writes (the
+  shell only reads UPower status)
+- call audio routing, emergency calling, SIM unlock, MMS, USSD, contacts or
+  call history (the telephony surfaces only project ModemManager state)
 - PAM, fingerprint or any real lock authentication
 - a system-wide input method implementation (Squeekboard and Phosh provide it;
   the QML fallback only types into the shell's own fields)

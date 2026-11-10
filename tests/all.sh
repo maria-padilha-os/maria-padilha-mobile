@@ -92,6 +92,13 @@ else
   fail=1
 fi
 
+if bash tests/modem.sh; then
+  echo "ok tests/modem.sh"
+else
+  echo "FAIL tests/modem.sh"
+  fail=1
+fi
+
 if bash tests/shell.sh; then
   echo "ok tests/shell.sh"
 else

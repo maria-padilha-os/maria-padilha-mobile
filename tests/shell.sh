@@ -93,6 +93,7 @@ run_selftest fallback-missing "$tmp/does-not-exist/scheme.json"
 
 privacy_selftest() {
   local secret="padilha-typed-text-${RANDOM}-$$"
+  local sms_secret="padilha-sms-content-${RANDOM}-$$"
   local out="$tmp/selftest-privacy.log"
   mkdir -p "$tmp/run-privacy"
   chmod 700 "$tmp/run-privacy"
@@ -101,6 +102,7 @@ privacy_selftest() {
     XDG_RUNTIME_DIR="$tmp/run-privacy" \
     PADILHA_SHELL_DEMO=1 PADILHA_SHELL_SELFTEST=1 PADILHA_SHELL_SURFACE=lock \
     PADILHA_SHELL_QUERY="$secret" PADILHA_SHELL_PIN=9876 \
+    PADILHA_TELEPHONY_MESSAGE="$sms_secret" \
     PADILHA_SCHEME="$ROOT/shell/palettes/padilha-light.json" \
     timeout 45s quickshell -p "$ROOT/shell" --no-color >"$out" 2>&1
   local rc=$?
@@ -108,10 +110,10 @@ privacy_selftest() {
   if [ "$rc" -ne 0 ] || ! grep -q 'PADILHA_SHELL_SELFTEST_PASS' "$out"; then
     grep -E 'selftest|SELFTEST|ERROR|WARN scene|TypeError|Cannot assign' "$out" >&2 || cat "$out" >&2
     bad "typed-text logging self-test rc=$rc"
-  elif grep -qF "$secret" "$out" || grep -qF '9876' "$out"; then
-    bad "typed-text logging self-test found the query or PIN in shell output"
+  elif grep -qF "$secret" "$out" || grep -qF "$sms_secret" "$out" || grep -qF '9876' "$out"; then
+    bad "typed-text logging self-test found the query, SMS content or PIN in shell output"
   else
-    ok "typed-text logging self-test"
+    ok "typed-text and SMS logging self-test"
   fi
 }
 
@@ -120,6 +122,7 @@ privacy_selftest
 
 shot() {
   local label=$1 size=$2 surface=$3 scheme=$4 pin=${5:-} osk=${6:-} purpose=${7:-}
+  local telephony_demo=${8:-} telephony_backend=${9:-} min_colours=${10:-8}
   local image="$tmp/$label.png"
   local out="$tmp/$label.log"
   local width=${size%x*}
@@ -134,6 +137,8 @@ shot() {
     PADILHA_SHELL_PIN="$pin" PADILHA_SCHEME="$scheme" PADILHA_SHELL_GRAB="$image" \
     PADILHA_SHELL_OSK="$osk" PADILHA_SHELL_KEYBOARD="${osk:+1}" \
     PADILHA_SHELL_KEYBOARD_PURPOSE="$purpose" \
+    PADILHA_TELEPHONY_DEMO="$telephony_demo" \
+    PADILHA_TELEPHONY_BACKEND="$telephony_backend" \
     timeout 45s quickshell -p "$ROOT/shell" --no-color >"$out" 2>&1
   local rc=$?
   set -e
@@ -148,7 +153,7 @@ shot() {
     bad "render $label logged QML errors"
     return
   fi
-  if python3 tests/shell/check_png.py "$image" "$width" "$height"; then
+  if python3 tests/shell/check_png.py "$image" "$width" "$height" "$min_colours"; then
     ok "render $label"
   else
     bad "render $label PNG check"
@@ -158,14 +163,22 @@ shot() {
 log "== responsive renders =="
 light="$ROOT/shell/palettes/padilha-light.json"
 dark="$ROOT/tests/shell/fixtures/padilha-dark.json"
-for surface in home launcher notifications lock; do
+for surface in home launcher notifications lock calls messages; do
   pin=""
   [ "$surface" = "lock" ] && pin=1234
-  shot "$surface-720x1280" 720x1280 "$surface" "$light" "$pin"
-  shot "$surface-1280x720" 1280x720 "$surface" "$light" "$pin"
+  minimum=8
+  [ "$surface" = "calls" ] || [ "$surface" = "messages" ] && minimum=4
+  shot "$surface-720x1280" 720x1280 "$surface" "$light" "$pin" "" "" "" "" "$minimum"
+  shot "$surface-1280x720" 1280x720 "$surface" "$light" "$pin" "" "" "" "" "$minimum"
 done
 shot "home-720x1280-dark" 720x1280 home "$dark"
 shot "home-1280x720-dark" 1280x720 home "$dark"
+
+log "== no-modem telephony renders =="
+for surface in calls messages; do
+  shot "$surface-no-modem-720x1280" 720x1280 "$surface" "$light" "" "" "" 0 off 4
+  shot "$surface-no-modem-1280x720" 1280x720 "$surface" "$light" "" "" "" 0 off 4
+done
 
 log "== fallback keyboard renders =="
 for purpose in text terminal url password; do

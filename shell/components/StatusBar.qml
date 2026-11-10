@@ -59,6 +59,29 @@ Item {
 
         Row {
             Layout.alignment: Qt.AlignVCenter
+            spacing: 4
+            visible: root.state.telephony.modemPresent
+            Icon {
+                width: 18
+                height: 16
+                name: "signal"
+                level: root.state.telephony.signalQuality >= 0
+                    ? root.state.telephony.signalQuality / 100 : -1
+                color: root.state.telephony.ready ? root.theme.accent
+                    : (root.state.telephony.simLocked ? root.theme.danger : root.theme.textMuted)
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Text {
+                visible: root.landscape && root.state.telephony.operatorShort.length > 0
+                text: root.state.telephony.operatorShort
+                color: root.theme.textMuted
+                font.pixelSize: 11
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+
+        Row {
+            Layout.alignment: Qt.AlignVCenter
             spacing: 5
             Icon {
                 width: 18

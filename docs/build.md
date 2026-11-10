@@ -13,6 +13,8 @@ PinePhone target is documented but not built or flashed in this milestone.
 | `config/build.conf` | Pinned release, toolchain commits and mirrors |
 | `config/keyboard/keyboard.conf` | Squeekboard package, layouts, orientation and privacy policy |
 | `config/power/power.conf` | Battery, charge-threshold, thermal and suspend policy |
+| `config/modem/modem.conf` | ModemManager package, D-Bus interfaces and telephony privacy policy |
+| `scripts/telephony-bridge.py` | ModemManager D-Bus to Quickshell telephony bridge |
 | `config/power/systemd/` | Sleep/logind drop-ins and the charge-threshold oneshot |
 | `config/power/udev/` | `power_supply` add rule for the threshold helper |
 | `scripts/power-diagnostic.sh` | One-shot read-only battery/thermal/suspend report |
@@ -25,12 +27,17 @@ PinePhone target is documented but not built or flashed in this milestone.
 | `tests/build.sh` | Config/files/secrets/checksum gate (unprivileged) |
 | `tests/keyboard.sh` | Keyboard config/layout/privacy and installer checks |
 | `tests/power.sh` | Power config, sysfs fixtures, threshold no-op, suspend guard and staging |
-| `tests/shell.sh` | Palette, QML lint, self-test and offscreen render checks |
+| `tests/modem.sh` | ModemManager policy, real no-modem daemon and emulated call/SMS flow |
+| `tests/shell.sh` | Palette, QML lint, self-test, telephony privacy and offscreen render checks |
 | `tests/all.sh` | Repository checks used by CI |
 
 ## Prerequisites
 
 - Linux host, `git`, Python 3, `sha256sum`, `find`/`xargs`
+- For the telephony checks only: `ModemManager`, `mmcli`,
+  `dbus-run-session` and Python Gio/GLib introspection. If they are missing the
+  emulated and real-daemon checks are skipped explicitly; the static policy
+  checks still run.
 - `qemu-system-aarch64` **only** for `--boot` / `scripts/run-qemu.sh`
 - `sudo` or `doas` **only** for a full `pmbootstrap` build. pmbootstrap uses
   chroot and mount internally; the wrapper never calls either directly.
@@ -50,8 +57,9 @@ make build-dry-run         # print the pinned build plan
 make build                 # full image build (builder with sudo/doas)
 make boot                  # build, then boot with QEMU
 make qemu                  # boot an already-built image
-make test                  # repository CI checks, including keyboard and power checks
+make test                  # repository CI checks, including keyboard, power and modem
 make power-test            # power config, fixtures, threshold no-op, suspend guard
+make modem-test            # ModemManager policy, no-modem daemon, emulated call/SMS flow
 make power-diagnostic      # one-shot read-only battery/thermal/suspend report
 make stage-power           # stage power drop-ins/helper under .scratch/power-root
 ```
@@ -92,7 +100,8 @@ checked before use. `pmaports` is fetched at the exact commit and its
 2. Refuses to run as root or to build a physical target.
 3. Fetches pinned `pmbootstrap` and `pmaports` into `.scratch/build/`.
 4. Writes a pmbootstrap config for the device, Phosh and systemd, with the
-   Squeekboard, UPower and lm-sensors packages in `extra_packages`.
+   Squeekboard, UPower, lm-sensors and ModemManager packages in
+   `extra_packages`.
 5. Runs `pmbootstrap install --no-split` to create the QEMU image.
 6. Exports the image to `out/maria-padilha-qemu-aarch64.img` and writes its
    SHA-256 checksum.
@@ -140,6 +149,8 @@ reaches the login/session is the milestone gate, not a performance benchmark.
 - flashing, partitioning or writing to physical devices
 - a polling thermal/power daemon, a timer unit or a laptop suspend test
 - bootloader unlock/bypass instructions
+- claiming a real call, SMS, carrier registration or call-audio result without
+  a supported device/module; see [`docs/modem.md`](modem.md)
 - claiming PinePhone support before the physical checklist passes
 - Android userspaces or Android compatibility layers
 - publishing unsigned or unchecked images

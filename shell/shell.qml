@@ -57,6 +57,7 @@ ShellRoot {
         return isNaN(value) ? 1200 : Math.max(200, value);
     }
     readonly property bool selfTest: Quickshell.env("PADILHA_SHELL_SELFTEST") === "1"
+    readonly property bool telephonySelfTest: Quickshell.env("PADILHA_SHELL_TELEPHONY_SELFTEST") === "1"
 
     Theme {
         id: theme
@@ -171,6 +172,24 @@ ShellRoot {
                             onClosed: state.openSurface("home")
                         }
 
+                        CallsSurface {
+                            anchors.fill: parent
+                            visible: !state.locked && state.surface === "calls"
+                            landscape: root.landscape
+                            theme: theme
+                            state: state
+                            onClosed: state.openSurface("home")
+                        }
+
+                        MessagesSurface {
+                            anchors.fill: parent
+                            visible: !state.locked && state.surface === "messages"
+                            landscape: root.landscape
+                            theme: theme
+                            state: state
+                            onClosed: state.openSurface("home")
+                        }
+
                         LockSurface {
                             anchors.fill: parent
                             visible: state.locked
@@ -224,6 +243,14 @@ ShellRoot {
             state.openSurface("notifications");
         }
 
+        function calls() {
+            state.openSurface("calls");
+        }
+
+        function messages() {
+            state.openSurface("messages");
+        }
+
         function lock() {
             state.lock();
         }
@@ -252,7 +279,13 @@ ShellRoot {
                 mode: theme.mode,
                 keyboardMode: state.keyboardMode,
                 keyboardVisible: state.inlineKeyboardActive,
-                keyboardPurpose: state.keyboardPurpose
+                keyboardPurpose: state.keyboardPurpose,
+                telephony: state.telephony.state,
+                telephonyAvailable: state.telephony.available,
+                modemPresent: state.telephony.modemPresent,
+                operator: state.telephony.operatorName,
+                calls: state.telephony.calls.length,
+                messages: state.telephony.messages.length
             });
         }
     }
@@ -272,6 +305,35 @@ ShellRoot {
                 console.log("PADILHA_SHELL_GRAB_SAVED", saved, root.grabPath);
                 Qt.exit(saved ? 0 : 1);
             });
+        }
+    }
+
+    Timer {
+        id: telephonySelfTestTimer
+        interval: 3000
+        running: root.telephonySelfTest
+        onTriggered: {
+            const telephony = state.telephony;
+            const checks = [
+                ["bridge-enabled", telephony.bridgeEnabled],
+                ["state-registered", telephony.state === "registered"],
+                ["modem-present", telephony.modemPresent],
+                ["operator-name", telephony.operatorName.length > 0],
+                ["voice-capability", telephony.canDial],
+                ["messaging-capability", telephony.canMessage],
+                ["initial-calls", telephony.calls.length === 0],
+                ["initial-messages", telephony.messages.length === 0]
+            ];
+            let failed = 0;
+            for (const check of checks) {
+                console.log(check[1] ? "ok" : "FAIL", "telephony-selftest", check[0]);
+                if (!check[1])
+                    ++failed;
+            }
+            console.log(failed === 0
+                ? "PADILHA_SHELL_TELEPHONY_SELFTEST_PASS"
+                : "PADILHA_SHELL_TELEPHONY_SELFTEST_FAIL");
+            Qt.exit(failed === 0 ? 0 : 1);
         }
     }
 
@@ -327,7 +389,12 @@ ShellRoot {
                 ["keyboard-terminal", termRows.includes("Tab") && termRows.includes("Ctrl") && termRows.includes("↑")],
                 ["keyboard-url", urlRows.includes("/") && urlRows.includes(":")],
                 ["keyboard-password", passwordRows.includes("1") && passwordRows.includes("BackSpace")],
-                ["keyboard-avoidance", keyboardAvoidanceOk]
+                ["keyboard-avoidance", keyboardAvoidanceOk],
+                ["telephony-state", state.telephony.state.length > 0],
+                ["telephony-demo", state.telephony.demo === true],
+                ["telephony-modem", state.telephony.modemPresent === true],
+                ["telephony-calls", state.telephony.calls.length >= 0],
+                ["telephony-messages", state.telephony.messages.length > 0]
             ];
             let failed = 0;
             for (const check of checks) {

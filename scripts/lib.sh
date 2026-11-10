@@ -68,6 +68,11 @@ validate_config() {
     KEYBOARD_CONFIG KEYBOARD_BACKEND KEYBOARD_PACKAGE
     KEYBOARD_LAYOUT_NAME KEYBOARD_LAYOUT_DIR
     POWER_CONFIG POWER_CONFIG_VERSION POWER_PACKAGES POWER_CHARGE_THRESHOLD_MODE
+    MODEM_CONFIG MODEM_BACKEND MODEM_PACKAGES MODEM_BRIDGE
+    MODEM_NO_MODEM_STATE MODEM_UNAVAILABLE_STATE MODEM_LOCKED_STATE
+    MODEM_CALLS_ENABLED MODEM_SMS_ENABLED MODEM_STORE_MESSAGES
+    MODEM_STORE_CREDENTIALS MODEM_LOG_MESSAGE_CONTENT MODEM_LOG_CREDENTIALS
+    MODEM_LOG_PHONE_NUMBERS MODEM_EMERGENCY_CALLS
     POWER_CHARGE_THRESHOLD_START POWER_CHARGE_THRESHOLD_END
     POWER_THERMAL_WARN_C POWER_THERMAL_CRITICAL_C
     POWER_SUSPEND_POLICY POWER_SUSPEND_ALLOW_HIBERNATE
@@ -159,10 +164,38 @@ validate_config() {
     die "the power diagnostic must stay read-only"
 
   local package
-  for package in $POWER_PACKAGES; do
+  for package in $POWER_PACKAGES $MODEM_PACKAGES; do
     [[ "$package" =~ ^[a-z0-9][a-z0-9.+_-]*$ ]] ||
-      die "invalid power package name: '$package'"
+      die "invalid package name: '$package'"
   done
+
+  # Telephony policy: ModemManager is the only modem stack, the shell keeps no
+  # message cache or credentials, and the no-modem/unavailable states remain
+  # explicit. A future stack swap or logging change must update this gate,
+  # config/modem/modem.conf and docs/modem.md together.
+  [ -f "$MODEM_CONFIG" ] ||
+    die "missing modem config: $MODEM_CONFIG"
+  [ "$MODEM_BACKEND" = "ModemManager" ] ||
+    die "the telephony bridge targets ModemManager (got '$MODEM_BACKEND')"
+  [ -f "$ROOT/$MODEM_BRIDGE" ] ||
+    die "missing telephony bridge: $MODEM_BRIDGE"
+  [ -x "$ROOT/$MODEM_BRIDGE" ] ||
+    die "telephony bridge is not executable: $MODEM_BRIDGE"
+  [ "$MODEM_CALLS_ENABLED" = "true" ] &&
+    [ "$MODEM_SMS_ENABLED" = "true" ] ||
+    die "calls and SMS must stay enabled in the telephony policy"
+  [ "$MODEM_STORE_MESSAGES" = "false" ] &&
+    [ "$MODEM_STORE_CREDENTIALS" = "false" ] &&
+    [ "$MODEM_LOG_MESSAGE_CONTENT" = "false" ] &&
+    [ "$MODEM_LOG_CREDENTIALS" = "false" ] &&
+    [ "$MODEM_LOG_PHONE_NUMBERS" = "false" ] ||
+    die "message/credential storage and logging must stay disabled"
+  [ "$MODEM_EMERGENCY_CALLS" = "false" ] ||
+    die "emergency calls are not implemented and must not be claimed"
+  [ "$MODEM_NO_MODEM_STATE" = "no-modem" ] &&
+    [ "$MODEM_UNAVAILABLE_STATE" = "unavailable" ] &&
+    [ "$MODEM_LOCKED_STATE" = "locked" ] ||
+    die "unexpected telephony state names"
 
   case "$PMAPORTS_REPO" in https://*) ;; *) die "PMAPORTS_REPO must use https" ;; esac
   case "$PMBOOTSTRAP_REPO" in https://*) ;; *) die "PMBOOTSTRAP_REPO must use https" ;; esac
@@ -203,7 +236,16 @@ validate_required_files() {
     docs/qemu-keyboard-checklist.md
     docs/power.md
     docs/qemu-power-checklist.md
+    docs/adr/0003-modem-and-telephony.md
+    docs/modem.md
+    docs/qemu-telephony-checklist.md
     config/power/power.conf
+    config/modem/modem.conf
+    scripts/telephony-bridge.py
+    tests/modem.sh
+    tests/modem/fake_modemmanager.py
+    tests/modem/test_telephony_bridge.py
+    tests/modem/test_shell_telephony.py
     config/power/systemd/maria-padilha-charge-thresholds.service
     config/power/systemd/sleep.conf.d/10-maria-padilha-sleep.conf
     config/power/systemd/logind.conf.d/10-maria-padilha-power.conf
@@ -214,6 +256,13 @@ validate_required_files() {
     devices/pine64-pinephone/README.md
     shell/shell.qml
     shell/components/Theme.qml
+    shell/components/TelephonyService.qml
+    shell/components/TelephonyStatusCard.qml
+    shell/components/CallCard.qml
+    shell/components/SmsCard.qml
+    shell/components/DialPad.qml
+    shell/surfaces/CallsSurface.qml
+    shell/surfaces/MessagesSurface.qml
     shell/palettes/padilha-light.json
     shell/README.md
     scripts/build.sh
@@ -225,6 +274,7 @@ validate_required_files() {
     scripts/power-suspend-check.sh
     scripts/run-qemu.sh
     scripts/stage-power-config.sh
+    scripts/telephony-bridge.py
     tests/all.sh
     tests/build.sh
     tests/keyboard.sh
@@ -246,11 +296,16 @@ validate_required_files() {
     scripts/power-suspend-check.sh
     scripts/run-qemu.sh
     scripts/stage-power-config.sh
+    scripts/telephony-bridge.py
     tests/all.sh
     tests/build.sh
     tests/keyboard.sh
     tests/power.sh
     tests/shell.sh
+    tests/modem.sh
+    tests/modem/fake_modemmanager.py
+    tests/modem/test_telephony_bridge.py
+    tests/modem/test_shell_telephony.py
   )
   for file in "${executable[@]}"; do
     [ -x "$ROOT/$file" ] || die "required file is not executable: $file"

@@ -19,6 +19,7 @@ image builder; Android is not the base and is not assumed.
 | Base | postmarketOS/Nura stable, Alpine |
 | Interface | Phosh, with a Padilha palette layer |
 | Keyboard | Squeekboard, with Padilha terminal/URL/PIN layouts |
+| Modem | ModemManager, with Padilha calls and SMS surfaces |
 | QEMU | `qemu-aarch64` |
 | Physical | PinePhone-class close-to-mainline aarch64 |
 
@@ -41,6 +42,16 @@ bars, password fields and PINs. The integration notes are in
 [manual QEMU checklist](docs/qemu-keyboard-checklist.md). No physical-device
 claim is made.
 
+**Cellular modem, calls and SMS stack in place.** ModemManager owns modem
+probing, SIM state, voice-call objects and SMS objects. A small D-Bus bridge
+feeds Padilha calls and SMS surfaces; no custom AT/QMI/MBIM stack is added.
+The integration is documented in [`docs/modem.md`](docs/modem.md) and the
+choice in [ADR 0003](docs/adr/0003-modem-and-telephony.md). The calls UI uses
+the MM Voice interface and the SMS UI uses the MM Messaging interface. No
+modem was available for a real call or SMS test: the automated gate uses a real
+ModemManager daemon with no modem plus an emulated ModemManager D-Bus service.
+Call audio, emergency calls and SIM unlock are not claimed.
+
 **Power, battery, thermal and suspend policy in place.** UPower supplies
 battery/charging state to Phosh and the shell. A hardware-gated helper applies
 a 20–80% charge window only when the kernel exposes the standard
@@ -57,7 +68,9 @@ tested on the reference laptop, and no physical-device support is claimed.
 
 The shell is a single fullscreen `xdg-shell` window. That choice keeps it
 usable on a normal desktop compositor and in the QEMU guest under Phosh without
-requiring `wlr-layer-shell`. It does not replace Phosh's own shell.
+requiring `wlr-layer-shell`. It does not replace Phosh's own shell. Calls and
+Messages are Padilha surfaces backed by ModemManager; they are not a second
+telephony daemon.
 
 ### Launch
 
@@ -98,8 +111,8 @@ foreground roles are checked for contrast before use; an inconsistent scheme
 cannot produce light text on a light surface.
 
 The window can also be driven by `qs ipc call padilha-shell ...` while Quickshell
-is running (`home`, `launcher`, `notifications`, `lock`, `unlock`,
-`demoNotification`, `status`).
+is running (`home`, `launcher`, `notifications`, `calls`, `messages`, `lock`,
+`unlock`, `demoNotification`, `status`).
 
 ### On-screen keyboard
 
@@ -164,7 +177,7 @@ windows or the agent terminal.
 ```sh
 mkdir -p .scratch/screens
 for size in 720x1280 1280x720; do
-  for surface in home launcher notifications lock; do
+  for surface in home launcher notifications lock calls messages; do
     PADILHA_SHELL_DEMO=1 PADILHA_SHELL_SIZE="$size" \
       PADILHA_SHELL_SURFACE="$surface" \
       PADILHA_SHELL_GRAB="$PWD/.scratch/screens/$surface-$size.png" \
@@ -190,6 +203,8 @@ done
 | App grid | search field, four columns, no clipped labels | six columns, full-width search |
 | Notifications | cards with app, summary, body and a 48 px dismiss target | same, capped at 820 px width |
 | Lock | clock, privacy-safe count, 64 px keys, four PIN dots, any four digits unlock | clock left, 54 px keypad right |
+| Calls | status card, number display, 62 px dial pad, incoming/active call actions | status card, number display and dial pad within a 620 px column |
+| Messages | status card, message cards, reply/delete and compose panel above the nav bar | same, capped at 760 px width |
 | Keyboard | fallback panel ends above the focused search field; terminal, URL and password layouts are selectable | wide keys, shorter panel, focused field still visible |
 | Palette | light and dark state readable, no light-on-light text | same |
 | Touch | every actionable target is at least 48 px; keypad, nav, keys and quick actions are larger | same |
@@ -237,11 +252,49 @@ The suspend-target guard refuses laptops and desktops; use QEMU or a supported
 device and follow the [manual QEMU power checklist](docs/qemu-power-checklist.md).
 The repository never suspends the reference laptop.
 
+## Cellular modem, calls and SMS
+
+ModemManager is the maintained modem stack. The image installs the
+`modemmanager` package; the shell starts a small D-Bus adapter,
+[`scripts/telephony-bridge.py`](scripts/telephony-bridge.py), and renders calls
+and SMS in the Padilha surfaces. The bridge is not a modem daemon: it projects
+ModemManager's MM Voice and MM Messaging objects into JSON and forwards dial,
+answer, hangup, send and delete actions.
+
+```sh
+make modem-test     # policy, real no-modem ModemManager, emulated call/SMS flow
+make shell-test     # calls/messages renders, QML lint and the privacy selftest
+```
+
+The shell is reachable with:
+
+```sh
+qs ipc call padilha-shell calls
+qs ipc call padilha-shell messages
+```
+
+No-modem, ModemManager-unavailable, locked-SIM and capability-limited states
+are rendered with disabled actions instead of being treated as fatal errors.
+Message text and phone numbers are not written to logs or a local cache; the
+in-memory list is repopulated from ModemManager. See
+[`docs/modem.md`](docs/modem.md) for the interface map, privacy contract and
+limitations, and [ADR 0003](docs/adr/0003-modem-and-telephony.md) for the stack
+comparison.
+
+**No real call or SMS was tested in this checkout.** The automated gate starts
+a real ModemManager daemon on a private session bus with no modem, then uses an
+emulated ModemManager D-Bus service for call/SMS state. It proves the bridge and
+UI, not radio, carrier, audio or hardware. Call audio, emergency calls and SIM
+PIN/PUK are explicitly not claimed. The manual supported-device path is
+[`docs/qemu-telephony-checklist.md`](docs/qemu-telephony-checklist.md), and it
+must never be recorded as passed without a real modem result.
+
 ## Goals
 
 - touch-first status bar, launcher, app grid, notifications, and lock surface
 - large touch targets and readable type in light and dark palettes
 - Squeekboard on-screen keyboard with terminal, URL and password layouts
+- ModemManager-backed calls and SMS with graceful no-modem states
 - gesture navigation and safe power management
 - a QEMU-bootable image before any physical-device work
 - explicit device support and recovery documentation
@@ -267,6 +320,7 @@ make qemu         # boot the checked image with QEMU
 make test         # CI checks
 make keyboard-test # Squeekboard config/layout/privacy checks only
 make power-test    # power config, diagnostic fixtures, threshold no-op, suspend guard
+make modem-test    # ModemManager policy, no-modem daemon and emulated call/SMS flow
 make power-diagnostic # one-shot read-only battery/thermal/suspend report
 make stage-power   # stage systemd/udev/helper files under .scratch/power-root
 ```
@@ -275,6 +329,8 @@ Pinned `pmbootstrap`/`pmaports` inputs live in
 [`config/build.conf`](config/build.conf), the Squeekboard package/layout policy
 lives in [`config/keyboard/keyboard.conf`](config/keyboard/keyboard.conf), the
 battery/thermal/suspend policy lives in
-[`config/power/power.conf`](config/power/power.conf), and the QEMU target lives
-in [`devices/qemu-aarch64/`](devices/qemu-aarch64/). Flashing and physical
-partitioning are out of scope; only the QEMU target is built in this milestone.
+[`config/power/power.conf`](config/power/power.conf), the modem/telephony policy
+lives in [`config/modem/modem.conf`](config/modem/modem.conf), and the QEMU
+target lives in [`devices/qemu-aarch64/`](devices/qemu-aarch64/). Flashing and
+physical partitioning are out of scope; only the QEMU target is built in this
+milestone.

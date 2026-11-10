@@ -33,6 +33,7 @@ Item {
     // backend; the inline fallback panel is used only when the environment
     // asks for it or an auto-mode compositor never reports a keyboard.
     readonly property KeyboardLayouts keyboardLayouts: KeyboardLayouts {}
+    readonly property TelephonyService telephony: TelephonyService {}
     readonly property bool keyboardForced: Quickshell.env("PADILHA_SHELL_KEYBOARD") === "1"
     readonly property string keyboardMode: {
         const mode = String(Quickshell.env("PADILHA_SHELL_OSK") || "compositor").toLowerCase();
@@ -69,7 +70,7 @@ Item {
             root.locked = true;
             return "home";
         }
-        return ["home", "launcher", "notifications"].includes(requested) ? requested : "home";
+        return ["home", "launcher", "notifications", "calls", "messages"].includes(requested) ? requested : "home";
     }
 
     function openSurface(name) {
@@ -81,7 +82,7 @@ Item {
             toast("Unlock first");
             return;
         }
-        if (["home", "launcher", "notifications"].includes(name)) {
+        if (["home", "launcher", "notifications", "calls", "messages"].includes(name)) {
             if (root.surface !== name)
                 hideKeyboard();
             root.surface = name;
@@ -259,6 +260,44 @@ Item {
         toast(entry.summary + ": " + entry.body);
     }
 
+    function pushTelephonyMessage(message) {
+        if (!message)
+            return;
+        const sender = message.number || "Unknown number";
+        const entry = {
+            appName: "Messages",
+            summary: sender,
+            body: message.text || "",
+            time: Date.now(),
+            urgency: 2,
+            raw: null,
+            demo: false,
+            telephonyPath: message.path || ""
+        };
+        root.notifications = [entry, ...root.notifications];
+        root.latestNotification = entry;
+        root.toast("New message from " + sender);
+    }
+
+    function pushTelephonyCall(call) {
+        if (!call)
+            return;
+        const caller = call.number || "Unknown number";
+        const entry = {
+            appName: "Calls",
+            summary: "Incoming call",
+            body: caller,
+            time: Date.now(),
+            urgency: 2,
+            raw: null,
+            demo: false,
+            telephonyPath: call.path || ""
+        };
+        root.notifications = [entry, ...root.notifications];
+        root.latestNotification = entry;
+        root.toast("Incoming call · " + caller);
+    }
+
     function pushNotification(notification) {
         if (!notification)
             return;
@@ -292,7 +331,7 @@ Item {
 
     function loadApps() {
         if (root.demo) {
-            root.apps = demoApps;
+            root.apps = root.shellApps.concat(demoApps);
             return;
         }
         const entries = DesktopEntries.applications.values;
@@ -306,12 +345,16 @@ Item {
                 demo: false
             }))
             .sort((a, b) => a.name.localeCompare(b.name));
-        root.apps = real.length > 0 ? real : demoApps;
+        root.apps = root.shellApps.concat(real.length > 0 ? real : demoApps);
     }
 
     function launch(app) {
         if (!app)
             return;
+        if (app.surface) {
+            root.openSurface(app.surface);
+            return;
+        }
         if (app.demo || !app.entry) {
             toast("Prototype app · " + app.name);
             return;
@@ -325,8 +368,12 @@ Item {
         }
     }
 
+    property var shellApps: [
+        { name: "Calls", icon: "phone", id: "shell.calls", entry: null, demo: false, surface: "calls" },
+        { name: "Messages", icon: "message", id: "shell.messages", entry: null, demo: false, surface: "messages" }
+    ]
+
     property var demoApps: [
-        { name: "Messages", icon: "message", id: "demo.messages", entry: null, demo: true },
         { name: "Notes", icon: "note", id: "demo.notes", entry: null, demo: true },
         { name: "Gallery", icon: "image", id: "demo.gallery", entry: null, demo: true },
         { name: "Calendar", icon: "calendar", id: "demo.calendar", entry: null, demo: true },
@@ -391,6 +438,16 @@ Item {
         imageSupported: true
         persistenceSupported: false
         onNotification: notification => root.pushNotification(notification)
+    }
+
+    Connections {
+        target: root.telephony
+        function onIncomingCall(call) {
+            root.pushTelephonyCall(call);
+        }
+        function onIncomingMessage(message) {
+            root.pushTelephonyMessage(message);
+        }
     }
 
     Timer {
