@@ -14,7 +14,9 @@ PinePhone target is documented but not built or flashed in this milestone.
 | `config/keyboard/keyboard.conf` | Squeekboard package, layouts, orientation and privacy policy |
 | `config/power/power.conf` | Battery, charge-threshold, thermal and suspend policy |
 | `config/modem/modem.conf` | ModemManager package, D-Bus interfaces and telephony privacy policy |
+| `config/camera/camera.conf` | libcamera/PipeWire/portal package and privacy policy |
 | `scripts/telephony-bridge.py` | ModemManager D-Bus to Quickshell telephony bridge |
+| `scripts/camera-bridge.py` | portal permission, camera state and one-frame capture helper |
 | `config/power/systemd/` | Sleep/logind drop-ins and the charge-threshold oneshot |
 | `config/power/udev/` | `power_supply` add rule for the threshold helper |
 | `scripts/power-diagnostic.sh` | One-shot read-only battery/thermal/suspend report |
@@ -28,7 +30,8 @@ PinePhone target is documented but not built or flashed in this milestone.
 | `tests/keyboard.sh` | Keyboard config/layout/privacy and installer checks |
 | `tests/power.sh` | Power config, sysfs fixtures, threshold no-op, suspend guard and staging |
 | `tests/modem.sh` | ModemManager policy, real no-modem daemon and emulated call/SMS flow |
-| `tests/shell.sh` | Palette, QML lint, self-test, telephony privacy and offscreen render checks |
+| `tests/camera.sh` | Camera policy, generated pattern, emulated portal and shell process checks |
+| `tests/shell.sh` | Palette, QML lint, self-test, camera/telephony privacy and offscreen render checks |
 | `tests/all.sh` | Repository checks used by CI |
 
 ## Prerequisites
@@ -38,6 +41,10 @@ PinePhone target is documented but not built or flashed in this milestone.
   `dbus-run-session` and Python Gio/GLib introspection. If they are missing the
   emulated and real-daemon checks are skipped explicitly; the static policy
   checks still run.
+- For the camera checks: `dbus-run-session`, Python Gio/GLib introspection, a
+  Quickshell binary for the shell process check, and `pipewire`/`gst-launch`
+  only if a real capture is being tried manually. No camera device or portal
+  prompt is needed for the automated checks.
 - `qemu-system-aarch64` **only** for `--boot` / `scripts/run-qemu.sh`
 - `sudo` or `doas` **only** for a full `pmbootstrap` build. pmbootstrap uses
   chroot and mount internally; the wrapper never calls either directly.
@@ -57,9 +64,10 @@ make build-dry-run         # print the pinned build plan
 make build                 # full image build (builder with sudo/doas)
 make boot                  # build, then boot with QEMU
 make qemu                  # boot an already-built image
-make test                  # repository CI checks, including keyboard, power and modem
+make test                  # repository CI checks, including keyboard, power, modem and camera
 make power-test            # power config, fixtures, threshold no-op, suspend guard
 make modem-test            # ModemManager policy, no-modem daemon, emulated call/SMS flow
+make camera-test           # camera policy, generated pattern, emulated portal and shell flow
 make power-diagnostic      # one-shot read-only battery/thermal/suspend report
 make stage-power           # stage power drop-ins/helper under .scratch/power-root
 ```
@@ -100,8 +108,8 @@ checked before use. `pmaports` is fetched at the exact commit and its
 2. Refuses to run as root or to build a physical target.
 3. Fetches pinned `pmbootstrap` and `pmaports` into `.scratch/build/`.
 4. Writes a pmbootstrap config for the device, Phosh and systemd, with the
-   Squeekboard, UPower, lm-sensors and ModemManager packages in
-   `extra_packages`.
+   Squeekboard, UPower, lm-sensors, ModemManager, libcamera/PipeWire/portal
+   packages and camera capture elements in `extra_packages`.
 5. Runs `pmbootstrap install --no-split` to create the QEMU image.
 6. Exports the image to `out/maria-padilha-qemu-aarch64.img` and writes its
    SHA-256 checksum.
@@ -111,7 +119,10 @@ itself. `scripts/stage-power-config.sh --dest <rootfs>` fills a staging tree
 that the image packaging step can copy in; this keeps the unprivileged wrapper
 from writing to host `/etc` or `/usr`. The battery, thermal and suspend policy
 and its known limitations are in [`docs/power.md`](power.md). The manual QEMU
-gate is [`docs/qemu-power-checklist.md`](qemu-power-checklist.md).
+gate is [`docs/qemu-power-checklist.md`](qemu-power-checklist.md). The camera
+stack and its no-camera fallback are documented in
+[`docs/camera.md`](camera.md); the manual gate is
+[`docs/qemu-camera-checklist.md`](qemu-camera-checklist.md).
 
 No partitioner, bootloader installer or flasher is implemented here; the
 wrapper deliberately delegates image assembly to pmbootstrap. The `shell/`
@@ -151,6 +162,8 @@ reaches the login/session is the milestone gate, not a performance benchmark.
 - bootloader unlock/bypass instructions
 - claiming a real call, SMS, carrier registration or call-audio result without
   a supported device/module; see [`docs/modem.md`](modem.md)
+- claiming a real camera frame, portal prompt or sensor support without the
+  supported-device evidence; see [`docs/camera.md`](camera.md)
 - claiming PinePhone support before the physical checklist passes
 - Android userspaces or Android compatibility layers
 - publishing unsigned or unchecked images

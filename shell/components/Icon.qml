@@ -365,6 +365,34 @@ Item {
                 ctx.lineTo(12, 4.5);
                 ctx.lineTo(18.5, 11);
                 ctx.stroke();
+            } else if (root.name === "camera") {
+                root._roundRect(ctx, 3.5, 7.0, 17.0, 12.5, 3.0);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(8.5, 7.0);
+                ctx.lineTo(9.8, 4.5);
+                ctx.lineTo(14.2, 4.5);
+                ctx.lineTo(15.5, 7.0);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(12, 13.2, 3.7, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(17.7, 9.8, 0.9, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (root.name === "image") {
+                root._roundRect(ctx, 3.5, 4.5, 17.0, 15.0, 3.0);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(8.5, 9.5, 1.6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(4.5, 17.5);
+                ctx.lineTo(9.5, 12.5);
+                ctx.lineTo(13.0, 16.0);
+                ctx.lineTo(15.5, 13.5);
+                ctx.lineTo(19.5, 17.5);
+                ctx.stroke();
             } else {
                 // Unknown icon: a hollow dot is a deliberate, visible fallback.
                 ctx.beginPath();

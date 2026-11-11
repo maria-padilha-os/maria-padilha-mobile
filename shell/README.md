@@ -3,8 +3,9 @@
 A small touch-first Quickshell shell for the Maria Padilha mobile work. It is a
 prototype: it does not replace Phosh, does not authenticate users, does not
 implement device daemons and does not flash anything. It reads UPower and
-NetworkManager status and talks to ModemManager through the small telephony
-bridge for calls and SMS.
+NetworkManager status, talks to ModemManager through the small telephony
+bridge for calls and SMS, and consumes cameras through the libcamera/PipeWire
+portal with a generated no-camera fallback.
 
 The launch instructions and the required screenshot checklist live in the
 [repository README](../README.md#touch-first-shell-prototype). This file maps
@@ -20,6 +21,7 @@ the implementation and records the scope.
 | Notifications | `surfaces/NotificationsSurface.qml` | live `NotificationServer` list, demo cards, dismiss and clear |
 | Calls | `surfaces/CallsSurface.qml`, `components/CallCard.qml`, `components/DialPad.qml` | ModemManager Voice calls, dial/incoming/active states, graceful no-modem states |
 | Messages | `surfaces/MessagesSurface.qml`, `components/SmsCard.qml` | ModemManager Messaging list, reply/send/delete, in-memory only |
+| Camera | `surfaces/CameraSurface.qml`, `components/CameraService.qml`, `components/CameraTestPattern.qml` | portal permission, one-frame capture, generated no-camera fallback |
 | Lock | `surfaces/LockSurface.qml` | clock, privacy-safe notification count, PIN dots, large keypad |
 | Navigation | `components/NavBar.qml`, `components/SideRail.qml` | bottom bar in portrait, side rail in landscape |
 | Keyboard fallback | `components/KeyboardPanel.qml`, `components/KeyboardKey.qml`, `components/KeyboardLayouts.qml` | optional in-shell panel for the shell's own text fields |
@@ -60,6 +62,22 @@ creates, answers and hangs up ModemManager call objects, but does not claim a
 working audio path. The full policy is in
 [`docs/modem.md`](../docs/modem.md) and
 [ADR 0003](../docs/adr/0003-modem-and-telephony.md).
+
+## Camera
+
+`components/CameraService.qml` owns one short-lived bridge process
+(`scripts/camera-bridge.py`) per action. It does not probe `/dev/video*`: it
+asks `xdg-desktop-portal`'s Camera interface for permission, opens the portal
+PipeWire remote and optionally captures one frame. `CameraSurface.qml` renders
+`ready`, `no-camera`, `permission-denied`, `permission-cancelled`,
+`portal-unavailable`, `capture-failed` and `disabled` states.
+
+The no-camera preview is `CameraTestPattern.qml`, a generated colour-bar and
+checkerboard canvas labelled **Generated test pattern**. It is not a bundled
+photograph. Captures stay in `$XDG_RUNTIME_DIR/maria-padilha-camera`; the shell
+does not log image data or capture paths and does not add them to a gallery.
+The full stack and privacy contract are in [`docs/camera.md`](../docs/camera.md)
+and [ADR 0004](../docs/adr/0004-camera-and-media-capture.md).
 
 ## Palette wiring
 
@@ -129,7 +147,7 @@ and uses a shorter key row in landscape.
 - Tap the launcher search field to focus it. In compositor mode Squeekboard
   opens; with `PADILHA_SHELL_OSK=inline` the fallback panel opens. Tap the
   down-arrow key or outside the field to hide it.
-- `qs ipc call padilha-shell <home|launcher|notifications|lock|unlock|demoNotification|status>`
+- `qs ipc call padilha-shell <home|launcher|notifications|calls|messages|camera|lock|unlock|demoNotification|status>`
   drives the running shell.
 
 ## Test hooks
@@ -141,7 +159,7 @@ These variables exist for reproducible screenshots and tests:
 | `PADILHA_SCHEME` | palette state file to read |
 | `PADILHA_SHELL_DEMO=1` | deterministic demo apps, notifications, 82% battery, Wi-Fi |
 | `PADILHA_SHELL_SIZE=WxH` | force the window size |
-| `PADILHA_SHELL_SURFACE=home\|launcher\|notifications\|lock` | initial surface |
+| `PADILHA_SHELL_SURFACE=home\|launcher\|notifications\|lock\|calls\|messages\|camera` | initial surface |
 | `PADILHA_SHELL_QUERY` | pre-fill the launcher search |
 | `PADILHA_SHELL_PIN` | pre-fill the prototype PIN dots |
 | `PADILHA_SHELL_GRAB=/path.png` | render the shell to a PNG and exit |
@@ -156,14 +174,20 @@ These variables exist for reproducible screenshots and tests:
 | `PADILHA_TELEPHONY_BACKEND=auto\|off` | start the bridge, or render the no-modem state without a process |
 | `PADILHA_TELEPHONY_BUS=session` | use the session bus for tests/emulation |
 | `PADILHA_TELEPHONY_MESSAGE=...` | add an in-memory demo message for the no-logging check |
+| `PADILHA_CAMERA_DEMO=1\|0` | force deterministic camera demo state, or force the real helper |
+| `PADILHA_CAMERA_BACKEND=auto\|off\|test-pattern` | start the helper, or render the generated fallback without a process |
+| `PADILHA_CAMERA_AUTOREQUEST=0` | do not request portal access when the camera surface opens |
+| `PADILHA_CAMERA_BRIDGE=/path` | override the camera bridge path |
+| `PADILHA_SHELL_CAMERA_SELFTEST=1` | run the fake-portal camera shell selftest |
 
 ## Verification
 
 ```sh
-make test            # repository checks, including keyboard, modem and shell tests
+make test            # repository checks, including keyboard, modem, camera and shell tests
 tests/keyboard.sh    # Squeekboard config/layouts/privacy and installer checks
 tests/modem.sh       # ModemManager policy, no-modem daemon, emulated call/SMS flow
-tests/shell.sh       # palette, contrast, qmllint, self-test, telephony renders
+tests/camera.sh      # camera policy, generated pattern, emulated portal and shell flow
+tests/shell.sh       # palette, contrast, qmllint, self-test, camera/telephony renders
 ```
 
 The offscreen render path sets `QT_QPA_PLATFORM=offscreen` and
@@ -179,6 +203,8 @@ still run.
 - call audio routing, emergency calling, SIM unlock, MMS, USSD, contacts or
   call history (the telephony surfaces only project ModemManager state)
 - PAM, fingerprint or any real lock authentication
+- continuous camera preview, video/audio recording, flash, focus, zoom or
+  gallery integration (the shell captures at most one frame on demand)
 - a system-wide input method implementation (Squeekboard and Phosh provide it;
   the QML fallback only types into the shell's own fields)
 - image packaging, flashing, partitioning or physical-device support claims

@@ -34,6 +34,7 @@ Item {
     // asks for it or an auto-mode compositor never reports a keyboard.
     readonly property KeyboardLayouts keyboardLayouts: KeyboardLayouts {}
     readonly property TelephonyService telephony: TelephonyService {}
+    readonly property CameraService camera: CameraService {}
     readonly property bool keyboardForced: Quickshell.env("PADILHA_SHELL_KEYBOARD") === "1"
     readonly property string keyboardMode: {
         const mode = String(Quickshell.env("PADILHA_SHELL_OSK") || "compositor").toLowerCase();
@@ -70,7 +71,7 @@ Item {
             root.locked = true;
             return "home";
         }
-        return ["home", "launcher", "notifications", "calls", "messages"].includes(requested) ? requested : "home";
+        return ["home", "launcher", "notifications", "calls", "messages", "camera"].includes(requested) ? requested : "home";
     }
 
     function openSurface(name) {
@@ -82,10 +83,12 @@ Item {
             toast("Unlock first");
             return;
         }
-        if (["home", "launcher", "notifications", "calls", "messages"].includes(name)) {
+        if (["home", "launcher", "notifications", "calls", "messages", "camera"].includes(name)) {
             if (root.surface !== name)
                 hideKeyboard();
             root.surface = name;
+            if (name === "camera")
+                root.camera.activate();
         }
     }
 
@@ -370,7 +373,8 @@ Item {
 
     property var shellApps: [
         { name: "Calls", icon: "phone", id: "shell.calls", entry: null, demo: false, surface: "calls" },
-        { name: "Messages", icon: "message", id: "shell.messages", entry: null, demo: false, surface: "messages" }
+        { name: "Messages", icon: "message", id: "shell.messages", entry: null, demo: false, surface: "messages" },
+        { name: "Camera", icon: "camera", id: "shell.camera", entry: null, demo: false, surface: "camera" }
     ]
 
     property var demoApps: [
@@ -380,7 +384,6 @@ Item {
         { name: "Maps", icon: "map", id: "demo.maps", entry: null, demo: true },
         { name: "Music", icon: "music", id: "demo.music", entry: null, demo: true },
         { name: "Files", icon: "folder", id: "demo.files", entry: null, demo: true },
-        { name: "Camera", icon: "camera", id: "demo.camera", entry: null, demo: true },
         { name: "Weather", icon: "weather", id: "demo.weather", entry: null, demo: true },
         { name: "Clock", icon: "clock", id: "demo.clock", entry: null, demo: true },
         { name: "Calculator", icon: "calculate", id: "demo.calculator", entry: null, demo: true },

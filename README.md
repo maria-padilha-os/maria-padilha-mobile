@@ -20,6 +20,7 @@ image builder; Android is not the base and is not assumed.
 | Interface | Phosh, with a Padilha palette layer |
 | Keyboard | Squeekboard, with Padilha terminal/URL/PIN layouts |
 | Modem | ModemManager, with Padilha calls and SMS surfaces |
+| Camera | libcamera → PipeWire → `xdg-desktop-portal` |
 | QEMU | `qemu-aarch64` |
 | Physical | PinePhone-class close-to-mainline aarch64 |
 
@@ -52,6 +53,18 @@ modem was available for a real call or SMS test: the automated gate uses a real
 ModemManager daemon with no modem plus an emulated ModemManager D-Bus service.
 Call audio, emergency calls and SIM unlock are not claimed.
 
+**Camera and media-capture stack in place.** libcamera publishes cameras
+through PipeWire and `xdg-desktop-portal` is the permission boundary. The
+Padilha camera surface requests access through the portal, captures one frame
+on demand and falls back to a clearly labelled generated test pattern when no
+camera or portal is present. The stack is documented in
+[`docs/camera.md`](docs/camera.md), the decision in
+[ADR 0004](docs/adr/0004-camera-and-media-capture.md), and the device limits
+in the [supported-device note](docs/camera-supported-devices.md). No real
+camera was available: the automated gate uses an emulated Camera portal and a
+generated PNG. No photograph is bundled or published, and no physical camera
+support is claimed.
+
 **Power, battery, thermal and suspend policy in place.** UPower supplies
 battery/charging state to Phosh and the shell. A hardware-gated helper applies
 a 20–80% charge window only when the kernel exposes the standard
@@ -70,7 +83,8 @@ The shell is a single fullscreen `xdg-shell` window. That choice keeps it
 usable on a normal desktop compositor and in the QEMU guest under Phosh without
 requiring `wlr-layer-shell`. It does not replace Phosh's own shell. Calls and
 Messages are Padilha surfaces backed by ModemManager; they are not a second
-telephony daemon.
+telephony daemon. Camera is a Padilha surface backed by libcamera/PipeWire and
+the portal; it is not a camera daemon and it never bypasses the portal.
 
 ### Launch
 
@@ -289,12 +303,53 @@ PIN/PUK are explicitly not claimed. The manual supported-device path is
 [`docs/qemu-telephony-checklist.md`](docs/qemu-telephony-checklist.md), and it
 must never be recorded as passed without a real modem result.
 
+## Camera and media capture
+
+The image adds libcamera, PipeWire and the portal backend. The shell starts
+[`scripts/camera-bridge.py`](scripts/camera-bridge.py), a short-lived helper
+that reports camera state, requests permission through
+`org.freedesktop.portal.Camera`, opens the portal PipeWire remote and captures
+one frame on demand. It never opens `/dev/video*` and never bypasses the
+permission boundary.
+
+```sh
+make camera-test    # policy, generated pattern, emulated portal and shell flow
+make shell-test     # camera and other surface renders, QML lint and selftest
+
+scripts/camera-bridge.py --state
+scripts/camera-bridge.py --request
+scripts/camera-bridge.py --test-pattern /tmp/padilha-pattern.png
+```
+
+The camera surface is reachable with:
+
+```sh
+qs ipc call padilha-shell camera
+```
+
+No-camera, portal-unavailable, permission-denied/cancelled and capture-failed
+states render without crashing. When no camera is available the preview is a
+generated colour-bar/checkerboard pattern, labelled as generated, not a
+photograph. No photo or test image is committed; captures stay in
+`$XDG_RUNTIME_DIR` and are not uploaded or added to a gallery. See
+[`docs/camera.md`](docs/camera.md) for the portal flow, state model and privacy
+contract, [ADR 0004](docs/adr/0004-camera-and-media-capture.md) for the stack
+comparison, and the [supported-device note](docs/camera-supported-devices.md)
+for what is not claimed.
+
+**No real camera was tested in this checkout.** The automated gate uses an
+emulated Camera portal and generated patterns. It proves the bridge and UI,
+not sensor enumeration, the real portal prompt or hardware capture. QEMU has
+no camera by default; the manual path is
+[`docs/qemu-camera-checklist.md`](docs/qemu-camera-checklist.md).
+
 ## Goals
 
 - touch-first status bar, launcher, app grid, notifications, and lock surface
 - large touch targets and readable type in light and dark palettes
 - Squeekboard on-screen keyboard with terminal, URL and password layouts
 - ModemManager-backed calls and SMS with graceful no-modem states
+- libcamera/PipeWire camera with portal permission and no-camera fallback
 - gesture navigation and safe power management
 - a QEMU-bootable image before any physical-device work
 - explicit device support and recovery documentation
@@ -321,6 +376,7 @@ make test         # CI checks
 make keyboard-test # Squeekboard config/layout/privacy checks only
 make power-test    # power config, diagnostic fixtures, threshold no-op, suspend guard
 make modem-test    # ModemManager policy, no-modem daemon and emulated call/SMS flow
+make camera-test   # camera policy, generated pattern, emulated portal and shell flow
 make power-diagnostic # one-shot read-only battery/thermal/suspend report
 make stage-power   # stage systemd/udev/helper files under .scratch/power-root
 ```
@@ -330,7 +386,8 @@ Pinned `pmbootstrap`/`pmaports` inputs live in
 lives in [`config/keyboard/keyboard.conf`](config/keyboard/keyboard.conf), the
 battery/thermal/suspend policy lives in
 [`config/power/power.conf`](config/power/power.conf), the modem/telephony policy
-lives in [`config/modem/modem.conf`](config/modem/modem.conf), and the QEMU
-target lives in [`devices/qemu-aarch64/`](devices/qemu-aarch64/). Flashing and
-physical partitioning are out of scope; only the QEMU target is built in this
-milestone.
+lives in [`config/modem/modem.conf`](config/modem/modem.conf), the camera
+policy lives in [`config/camera/camera.conf`](config/camera/camera.conf), and
+the QEMU target lives in [`devices/qemu-aarch64/`](devices/qemu-aarch64/).
+Flashing and physical partitioning are out of scope; only the QEMU target is
+built in this milestone.

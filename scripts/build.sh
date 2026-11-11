@@ -74,6 +74,7 @@ if [ "$DRY_RUN" = true ]; then
   log "would install keyboard: $KEYBOARD_BACKEND ($KEYBOARD_PACKAGE)"
   log "would install power packages: $POWER_PACKAGES"
   log "would install modem packages: $MODEM_PACKAGES (telephony backend: $MODEM_BACKEND)"
+  log "would install camera packages: $CAMERA_PACKAGES (camera stack: $CAMERA_STACK)"
   log "would stage power policy: sleep, logind, charge-threshold oneshot, udev rule"
   log "would write image: out/$IMAGE_NAME"
   log "dry run complete; no network or privileged command used"
@@ -161,7 +162,7 @@ build_default_device_arch = False
 build_pkgs_on_install = True
 ccache_size = 5G
 device = $DEVICE
-extra_packages = $KEYBOARD_PACKAGE $POWER_PACKAGES $MODEM_PACKAGES
+extra_packages = $KEYBOARD_PACKAGE $POWER_PACKAGES $MODEM_PACKAGES $CAMERA_PACKAGES
 extra_space = 0
 hostname = maria-padilha
 is_default_channel = False

@@ -73,6 +73,19 @@ validate_config() {
     MODEM_CALLS_ENABLED MODEM_SMS_ENABLED MODEM_STORE_MESSAGES
     MODEM_STORE_CREDENTIALS MODEM_LOG_MESSAGE_CONTENT MODEM_LOG_CREDENTIALS
     MODEM_LOG_PHONE_NUMBERS MODEM_EMERGENCY_CALLS
+    CAMERA_CONFIG CAMERA_CONFIG_VERSION CAMERA_PACKAGES
+    CAMERA_LIBCAMERA_TOOLS_PACKAGE CAMERA_BRIDGE
+    CAMERA_STACK CAMERA_BACKEND CAMERA_TRANSPORT CAMERA_PORTAL
+    CAMERA_PORTAL_BUS CAMERA_PORTAL_NAME CAMERA_PORTAL_PATH
+    CAMERA_PORTAL_INTERFACE CAMERA_REQUEST_INTERFACE
+    CAMERA_PERMISSION_MODE CAMERA_AUTO_REQUEST CAMERA_DIRECT_V4L2
+    CAMERA_READY_STATE CAMERA_NO_CAMERA_STATE CAMERA_PERMISSION_DENIED_STATE
+    CAMERA_PERMISSION_CANCELLED_STATE CAMERA_PORTAL_UNAVAILABLE_STATE
+    CAMERA_UNAVAILABLE_STATE CAMERA_FALLBACK_STATE CAMERA_TEST_PATTERN
+    CAMERA_TEST_PATTERN_WIDTH CAMERA_TEST_PATTERN_HEIGHT CAMERA_CAPTURE_DIR
+    CAMERA_STORE_CAPTURES CAMERA_UPLOAD_CAPTURES CAMERA_LOG_IMAGE_DATA
+    CAMERA_LOG_CAPTURE_PATHS CAMERA_BUNDLE_TEST_IMAGES
+    CAMERA_SUPPORTED_DEVICES_NOTE CAMERA_QEMU_CHECKLIST
     POWER_CHARGE_THRESHOLD_START POWER_CHARGE_THRESHOLD_END
     POWER_THERMAL_WARN_C POWER_THERMAL_CRITICAL_C
     POWER_SUSPEND_POLICY POWER_SUSPEND_ALLOW_HIBERNATE
@@ -164,7 +177,7 @@ validate_config() {
     die "the power diagnostic must stay read-only"
 
   local package
-  for package in $POWER_PACKAGES $MODEM_PACKAGES; do
+  for package in $POWER_PACKAGES $MODEM_PACKAGES $CAMERA_PACKAGES; do
     [[ "$package" =~ ^[a-z0-9][a-z0-9.+_-]*$ ]] ||
       die "invalid package name: '$package'"
   done
@@ -196,6 +209,68 @@ validate_config() {
     [ "$MODEM_UNAVAILABLE_STATE" = "unavailable" ] &&
     [ "$MODEM_LOCKED_STATE" = "locked" ] ||
     die "unexpected telephony state names"
+
+  # Camera policy: libcamera -> PipeWire -> portal is the only capture path.
+  # Direct V4L2 access would bypass the permission boundary, so it stays
+  # disabled. Photos and generated test images are never committed, uploaded
+  # or persisted by the image. A stack, permission or storage change must
+  # update this gate, config/camera/camera.conf and docs/camera.md together.
+  [ -f "$CAMERA_CONFIG" ] ||
+    die "missing camera config: $CAMERA_CONFIG"
+  [ "$CAMERA_CONFIG_VERSION" = "1" ] ||
+    die "unsupported camera config version: $CAMERA_CONFIG_VERSION"
+  [ "$CAMERA_STACK" = "libcamera-pipewire-portal" ] ||
+    die "camera stack must be libcamera-pipewire-portal (got '$CAMERA_STACK')"
+  [ "$CAMERA_BACKEND" = "libcamera" ] ||
+    die "camera backend must be libcamera (got '$CAMERA_BACKEND')"
+  [ "$CAMERA_TRANSPORT" = "PipeWire" ] ||
+    die "camera transport must be PipeWire (got '$CAMERA_TRANSPORT')"
+  [ "$CAMERA_PORTAL" = "xdg-desktop-portal" ] ||
+    die "camera permission boundary must be xdg-desktop-portal"
+  [ "$CAMERA_PORTAL_BUS" = "session" ] ||
+    die "the Camera portal lives on the session bus"
+  [ "$CAMERA_PORTAL_NAME" = "org.freedesktop.portal.Desktop" ] &&
+    [ "$CAMERA_PORTAL_PATH" = "/org/freedesktop/portal/desktop" ] &&
+    [ "$CAMERA_PORTAL_INTERFACE" = "org.freedesktop.portal.Camera" ] &&
+    [ "$CAMERA_REQUEST_INTERFACE" = "org.freedesktop.portal.Request" ] ||
+    die "unexpected Camera portal names"
+  [ "$CAMERA_PERMISSION_MODE" = "portal" ] &&
+    [ "$CAMERA_DIRECT_V4L2" = "false" ] ||
+    die "camera access must go through the portal, not direct V4L2"
+  [ "$CAMERA_AUTO_REQUEST" = "true" ] || [ "$CAMERA_AUTO_REQUEST" = "false" ] ||
+    die "CAMERA_AUTO_REQUEST must be true or false"
+  [ "$CAMERA_STORE_CAPTURES" = "false" ] &&
+    [ "$CAMERA_UPLOAD_CAPTURES" = "false" ] &&
+    [ "$CAMERA_LOG_IMAGE_DATA" = "false" ] &&
+    [ "$CAMERA_LOG_CAPTURE_PATHS" = "false" ] &&
+    [ "$CAMERA_BUNDLE_TEST_IMAGES" = "false" ] ||
+    die "camera captures/images must not be stored, uploaded, logged or bundled"
+  [ "$CAMERA_TEST_PATTERN" = "generated" ] ||
+    die "the no-camera fallback must be a generated test pattern"
+  [[ "$CAMERA_TEST_PATTERN_WIDTH" =~ ^[0-9]+$ ]] &&
+    [[ "$CAMERA_TEST_PATTERN_HEIGHT" =~ ^[0-9]+$ ]] ||
+    die "camera test-pattern dimensions must be integers"
+  [ "$CAMERA_TEST_PATTERN_WIDTH" -ge 64 ] &&
+    [ "$CAMERA_TEST_PATTERN_HEIGHT" -ge 64 ] &&
+    [ "$CAMERA_TEST_PATTERN_WIDTH" -le 4096 ] &&
+    [ "$CAMERA_TEST_PATTERN_HEIGHT" -le 4096 ] ||
+    die "camera test-pattern dimensions must be between 64 and 4096"
+  [ "$CAMERA_READY_STATE" = "ready" ] &&
+    [ "$CAMERA_NO_CAMERA_STATE" = "no-camera" ] &&
+    [ "$CAMERA_PERMISSION_DENIED_STATE" = "permission-denied" ] &&
+    [ "$CAMERA_PERMISSION_CANCELLED_STATE" = "permission-cancelled" ] &&
+    [ "$CAMERA_PORTAL_UNAVAILABLE_STATE" = "portal-unavailable" ] &&
+    [ "$CAMERA_UNAVAILABLE_STATE" = "unavailable" ] &&
+    [ "$CAMERA_FALLBACK_STATE" = "test-pattern" ] ||
+    die "unexpected camera state names"
+  [ -f "$ROOT/$CAMERA_BRIDGE" ] ||
+    die "missing camera bridge: $CAMERA_BRIDGE"
+  [ -x "$ROOT/$CAMERA_BRIDGE" ] ||
+    die "camera bridge is not executable: $CAMERA_BRIDGE"
+  case "$CAMERA_BRIDGE" in
+    scripts/*) ;;
+    *) die "camera bridge must stay repository-relative" ;;
+  esac
 
   case "$PMAPORTS_REPO" in https://*) ;; *) die "PMAPORTS_REPO must use https" ;; esac
   case "$PMBOOTSTRAP_REPO" in https://*) ;; *) die "PMBOOTSTRAP_REPO must use https" ;; esac
@@ -239,13 +314,23 @@ validate_required_files() {
     docs/adr/0003-modem-and-telephony.md
     docs/modem.md
     docs/qemu-telephony-checklist.md
+    docs/adr/0004-camera-and-media-capture.md
+    docs/camera.md
+    docs/qemu-camera-checklist.md
+    docs/camera-supported-devices.md
     config/power/power.conf
     config/modem/modem.conf
+    config/camera/camera.conf
     scripts/telephony-bridge.py
+    scripts/camera-bridge.py
     tests/modem.sh
     tests/modem/fake_modemmanager.py
     tests/modem/test_telephony_bridge.py
     tests/modem/test_shell_telephony.py
+    tests/camera.sh
+    tests/camera/fake_camera_portal.py
+    tests/camera/test_camera_bridge.py
+    tests/camera/test_shell_camera.py
     config/power/systemd/maria-padilha-charge-thresholds.service
     config/power/systemd/sleep.conf.d/10-maria-padilha-sleep.conf
     config/power/systemd/logind.conf.d/10-maria-padilha-power.conf
@@ -263,6 +348,9 @@ validate_required_files() {
     shell/components/DialPad.qml
     shell/surfaces/CallsSurface.qml
     shell/surfaces/MessagesSurface.qml
+    shell/components/CameraService.qml
+    shell/components/CameraTestPattern.qml
+    shell/surfaces/CameraSurface.qml
     shell/palettes/padilha-light.json
     shell/README.md
     scripts/build.sh
@@ -297,6 +385,7 @@ validate_required_files() {
     scripts/run-qemu.sh
     scripts/stage-power-config.sh
     scripts/telephony-bridge.py
+    scripts/camera-bridge.py
     tests/all.sh
     tests/build.sh
     tests/keyboard.sh
@@ -306,6 +395,10 @@ validate_required_files() {
     tests/modem/fake_modemmanager.py
     tests/modem/test_telephony_bridge.py
     tests/modem/test_shell_telephony.py
+    tests/camera.sh
+    tests/camera/fake_camera_portal.py
+    tests/camera/test_camera_bridge.py
+    tests/camera/test_shell_camera.py
   )
   for file in "${executable[@]}"; do
     [ -x "$ROOT/$file" ] || die "required file is not executable: $file"

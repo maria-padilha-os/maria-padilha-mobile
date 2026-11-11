@@ -99,6 +99,13 @@ else
   fail=1
 fi
 
+if bash tests/camera.sh; then
+  echo "ok tests/camera.sh"
+else
+  echo "FAIL tests/camera.sh"
+  fail=1
+fi
+
 if bash tests/shell.sh; then
   echo "ok tests/shell.sh"
 else

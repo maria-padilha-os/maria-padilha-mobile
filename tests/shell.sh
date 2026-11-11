@@ -123,6 +123,7 @@ privacy_selftest
 shot() {
   local label=$1 size=$2 surface=$3 scheme=$4 pin=${5:-} osk=${6:-} purpose=${7:-}
   local telephony_demo=${8:-} telephony_backend=${9:-} min_colours=${10:-8}
+  local camera_demo=${11:-} camera_backend=${12:-}
   local image="$tmp/$label.png"
   local out="$tmp/$label.log"
   local width=${size%x*}
@@ -139,6 +140,8 @@ shot() {
     PADILHA_SHELL_KEYBOARD_PURPOSE="$purpose" \
     PADILHA_TELEPHONY_DEMO="$telephony_demo" \
     PADILHA_TELEPHONY_BACKEND="$telephony_backend" \
+    PADILHA_CAMERA_DEMO="$camera_demo" \
+    PADILHA_CAMERA_BACKEND="$camera_backend" \
     timeout 45s quickshell -p "$ROOT/shell" --no-color >"$out" 2>&1
   local rc=$?
   set -e
@@ -163,7 +166,7 @@ shot() {
 log "== responsive renders =="
 light="$ROOT/shell/palettes/padilha-light.json"
 dark="$ROOT/tests/shell/fixtures/padilha-dark.json"
-for surface in home launcher notifications lock calls messages; do
+for surface in home launcher notifications lock calls messages camera; do
   pin=""
   [ "$surface" = "lock" ] && pin=1234
   minimum=8
@@ -178,6 +181,11 @@ log "== no-modem telephony renders =="
 for surface in calls messages; do
   shot "$surface-no-modem-720x1280" 720x1280 "$surface" "$light" "" "" "" 0 off 4
   shot "$surface-no-modem-1280x720" 1280x720 "$surface" "$light" "" "" "" 0 off 4
+done
+
+log "== no-camera camera renders =="
+for size in 720x1280 1280x720; do
+  shot "camera-no-camera-$size" "$size" camera "$light" "" "" "" "" "" 6 0 off
 done
 
 log "== fallback keyboard renders =="
