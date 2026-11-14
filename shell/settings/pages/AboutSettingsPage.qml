@@ -63,21 +63,21 @@ SettingsPage {
                 Layout.alignment: Qt.AlignHCenter
                 text: "Maria Padilha de Bolso"
                 color: root.theme.primaryContainerText
-                font.pixelSize: 24
+                font.pixelSize: root.theme.scaledFont(24)
                 font.weight: Font.DemiBold
             }
             Text {
                 Layout.alignment: Qt.AlignHCenter
                 text: "Mobile settings · v" + root.settings.mobileVersion
                 color: root.theme.primaryContainerText
-                font.pixelSize: 13
+                font.pixelSize: root.theme.scaledFont(13)
             }
             Text {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
                 text: "Touch-first shell for the Maria Padilha mobile image"
                 color: root.theme.primaryContainerText
-                font.pixelSize: 12
+                font.pixelSize: root.theme.scaledFont(12)
                 wrapMode: Text.WordWrap
             }
         }

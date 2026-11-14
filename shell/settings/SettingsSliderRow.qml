@@ -75,7 +75,7 @@ SettingsRowCard {
                     Layout.fillWidth: true
                     text: root.label
                     color: root.theme.highText
-                    font.pixelSize: 16
+                    font.pixelSize: root.theme.scaledFont(16)
                     font.weight: Font.Medium
                     elide: Text.ElideRight
                 }
@@ -84,7 +84,7 @@ SettingsRowCard {
                         ? root.valueLabel
                         : Math.round(root.value * 100) + "%"
                     color: root.theme.highMuted
-                    font.pixelSize: 14
+                    font.pixelSize: root.theme.scaledFont(14)
                     font.weight: Font.Medium
                 }
             }
@@ -94,7 +94,7 @@ SettingsRowCard {
                 visible: root.description.length > 0
                 text: root.description
                 color: root.theme.highMuted
-                font.pixelSize: 12
+                font.pixelSize: root.theme.scaledFont(12)
                 elide: Text.ElideRight
             }
 

@@ -36,7 +36,7 @@ Item {
             width: parent.width
             text: root.label
             color: root.theme.text
-            font.pixelSize: 15
+            font.pixelSize: root.theme.scaledFont(15)
             font.weight: Font.Medium
             elide: Text.ElideRight
         }
@@ -45,7 +45,7 @@ Item {
             visible: root.description.length > 0
             text: root.description
             color: root.theme.textMuted
-            font.pixelSize: 12
+            font.pixelSize: root.theme.scaledFont(12)
             elide: Text.ElideRight
         }
 
@@ -66,6 +66,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     enabled: root.enabled
+                    theme: root.theme
                     label: root._optionLabel(choice.modelData)
                     labelSize: 13
                     vertical: true

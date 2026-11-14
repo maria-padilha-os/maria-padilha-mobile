@@ -82,7 +82,9 @@ Item {
                 TouchButton {
                     Layout.preferredWidth: 52
                     Layout.preferredHeight: 52
+                    theme: root.theme
                     icon: "back"
+                    accessibleName: "Back"
                     iconSize: 22
                     vertical: true
                     background: root.theme.surfaceHigh
@@ -99,7 +101,7 @@ Item {
                         width: parent.width
                         text: root.currentPage === "index" ? "Settings" : root.pageTitle(root.currentPage)
                         color: root.theme.text
-                        font.pixelSize: root.landscape ? 26 : 24
+                        font.pixelSize: root.theme.scaledFont(root.landscape ? 26 : 24)
                         font.weight: Font.DemiBold
                         elide: Text.ElideRight
                     }
@@ -107,7 +109,7 @@ Item {
                         width: parent.width
                         text: root.pageDetail(root.currentPage)
                         color: root.theme.textMuted
-                        font.pixelSize: 12
+                        font.pixelSize: root.theme.scaledFont(12)
                         elide: Text.ElideRight
                     }
                 }
@@ -195,7 +197,7 @@ Item {
                                     text: navItem.modelData.title
                                     color: navItem.active
                                         ? root.theme.primaryContainerText : root.theme.containerText
-                                    font.pixelSize: 15
+                                    font.pixelSize: root.theme.scaledFont(15)
                                     font.weight: navItem.active ? Font.DemiBold : Font.Medium
                                     elide: Text.ElideRight
                                 }
@@ -226,7 +228,7 @@ Item {
                             anchors.margins: 10
                             text: "Touch targets stay at least 48 px. Settings use the existing Padilha config."
                             color: root.theme.containerMuted
-                            font.pixelSize: 11
+                            font.pixelSize: root.theme.scaledFont(11)
                             wrapMode: Text.WordWrap
                             verticalAlignment: Text.AlignVCenter
                         }
@@ -304,7 +306,7 @@ Item {
                                         text: card.modelData.title
                                         color: card.active
                                             ? root.theme.primaryContainerText : root.theme.highText
-                                        font.pixelSize: 17
+                                        font.pixelSize: root.theme.scaledFont(17)
                                         font.weight: Font.DemiBold
                                         elide: Text.ElideRight
                                     }
@@ -313,7 +315,7 @@ Item {
                                         text: card.modelData.detail
                                         color: card.active
                                             ? root.theme.primaryContainerText : root.theme.highMuted
-                                        font.pixelSize: 11
+                                        font.pixelSize: root.theme.scaledFont(11)
                                         wrapMode: Text.WordWrap
                                         maximumLineCount: 2
                                         elide: Text.ElideRight

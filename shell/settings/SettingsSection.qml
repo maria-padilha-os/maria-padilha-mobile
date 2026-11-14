@@ -17,7 +17,7 @@ Text {
     Layout.leftMargin: 4
     text: ""
     color: root.theme.textMuted
-    font.pixelSize: 12
+    font.pixelSize: root.theme.scaledFont(12)
     font.weight: Font.DemiBold
     font.letterSpacing: 0.6
     font.capitalization: Font.AllUppercase

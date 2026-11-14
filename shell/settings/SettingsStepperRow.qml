@@ -7,7 +7,6 @@ import "../components"
 
 SettingsRowCard {
     id: root
-
     property string label: ""
     property string description: ""
     property real value: 0
@@ -48,7 +47,7 @@ SettingsRowCard {
                 width: parent.width
                 text: root.label
                 color: root.theme.highText
-                font.pixelSize: 16
+                font.pixelSize: root.theme.scaledFont(16)
                 font.weight: Font.Medium
                 elide: Text.ElideRight
             }
@@ -57,7 +56,7 @@ SettingsRowCard {
                 visible: root.description.length > 0
                 text: root.description
                 color: root.theme.highMuted
-                font.pixelSize: 12
+                font.pixelSize: root.theme.scaledFont(12)
                 elide: Text.ElideRight
             }
         }
@@ -65,6 +64,7 @@ SettingsRowCard {
         TouchButton {
             Layout.preferredWidth: 48
             Layout.preferredHeight: 48
+            theme: root.theme
             label: "−"
             labelSize: 24
             vertical: true
@@ -79,7 +79,7 @@ SettingsRowCard {
             Layout.preferredWidth: 58
             text: Math.round(root.value) + root.valueSuffix
             color: root.theme.highText
-            font.pixelSize: 17
+            font.pixelSize: root.theme.scaledFont(17)
             font.weight: Font.DemiBold
             horizontalAlignment: Text.AlignHCenter
         }
@@ -87,6 +87,7 @@ SettingsRowCard {
         TouchButton {
             Layout.preferredWidth: 48
             Layout.preferredHeight: 48
+            theme: root.theme
             label: "+"
             labelSize: 24
             vertical: true

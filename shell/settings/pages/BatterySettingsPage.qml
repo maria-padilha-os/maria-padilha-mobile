@@ -64,7 +64,7 @@ SettingsPage {
                     text: root.battery.batteryLabel
                     color: root.battery.batteryCritical || root.battery.batteryLow
                         ? root.theme.dangerContainerText : root.theme.primaryContainerText
-                    font.pixelSize: 32
+                    font.pixelSize: root.theme.scaledFont(32)
                     font.weight: Font.DemiBold
                 }
                 Text {
@@ -74,7 +74,7 @@ SettingsPage {
                             ? " · " + root.battery.batteryTimeLabel : "")
                     color: root.battery.batteryCritical || root.battery.batteryLow
                         ? root.theme.dangerContainerText : root.theme.primaryContainerText
-                    font.pixelSize: 13
+                    font.pixelSize: root.theme.scaledFont(13)
                     elide: Text.ElideRight
                 }
             }

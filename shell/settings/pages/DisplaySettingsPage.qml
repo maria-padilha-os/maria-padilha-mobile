@@ -89,14 +89,14 @@ SettingsPage {
             Text {
                 text: "Maria Padilha"
                 color: root.theme.containerText
-                font.pixelSize: Math.round(24 * root.settings.displayScale)
+                font.pixelSize: root.theme.scaledFont(Math.round(24 * root.settings.displayScale))
                 font.weight: Font.DemiBold
             }
             Text {
                 Layout.fillWidth: true
                 text: "This sample uses the selected scale. Touch targets stay at least 48 px."
                 color: root.theme.containerMuted
-                font.pixelSize: Math.round(13 * root.settings.displayScale)
+                font.pixelSize: root.theme.scaledFont(Math.round(13 * root.settings.displayScale))
                 wrapMode: Text.WordWrap
             }
             Rectangle {
@@ -108,7 +108,7 @@ SettingsPage {
                     anchors.centerIn: parent
                     text: "Touch target"
                     color: root.theme.primaryText
-                    font.pixelSize: 14
+                    font.pixelSize: root.theme.scaledFont(14)
                     font.weight: Font.Medium
                 }
             }

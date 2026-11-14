@@ -86,7 +86,7 @@ Item {
                     width: parent.width
                     text: root.label
                     color: root.theme.highText
-                    font.pixelSize: 16
+                    font.pixelSize: root.theme.scaledFont(16)
                     font.weight: Font.Medium
                     elide: Text.ElideRight
                 }
@@ -95,7 +95,7 @@ Item {
                     visible: root.description.length > 0
                     text: root.description
                     color: root.theme.highMuted
-                    font.pixelSize: 12
+                    font.pixelSize: root.theme.scaledFont(12)
                     elide: Text.ElideRight
                 }
             }
@@ -104,7 +104,7 @@ Item {
                 Layout.maximumWidth: parent.width * 0.42
                 text: root._currentLabel()
                 color: root.theme.accent
-                font.pixelSize: 14
+                font.pixelSize: root.theme.scaledFont(14)
                 font.weight: Font.Medium
                 elide: Text.ElideRight
             }
@@ -166,7 +166,7 @@ Item {
                             width: parent.width
                             text: root._optionLabel(option.modelData)
                             color: option.active ? root.theme.primaryContainerText : root.theme.containerText
-                            font.pixelSize: 15
+                            font.pixelSize: root.theme.scaledFont(15)
                             font.weight: option.active ? Font.DemiBold : Font.Normal
                             elide: Text.ElideRight
                         }
@@ -176,7 +176,7 @@ Item {
                                     String(option.modelData.detail).length > 0
                             text: option.modelData.detail !== undefined ? option.modelData.detail : ""
                             color: option.active ? root.theme.primaryContainerText : root.theme.containerMuted
-                            font.pixelSize: 11
+                            font.pixelSize: root.theme.scaledFont(11)
                             elide: Text.ElideRight
                         }
                     }

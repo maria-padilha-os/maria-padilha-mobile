@@ -58,7 +58,7 @@ SettingsRowCard {
                 width: parent.width
                 text: root.label
                 color: root.theme.highText
-                font.pixelSize: 16
+                font.pixelSize: root.theme.scaledFont(16)
                 font.weight: Font.Medium
                 elide: Text.ElideRight
             }
@@ -67,7 +67,7 @@ SettingsRowCard {
                 visible: root.description.length > 0
                 text: root.description
                 color: root.theme.highMuted
-                font.pixelSize: 12
+                font.pixelSize: root.theme.scaledFont(12)
                 wrapMode: Text.WordWrap
                 maximumLineCount: 2
                 elide: Text.ElideRight
