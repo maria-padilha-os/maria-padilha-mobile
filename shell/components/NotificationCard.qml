@@ -37,7 +37,7 @@ Item {
                 anchors.centerIn: parent
                 text: (root.notification.appName || "?").substring(0, 1).toUpperCase()
                 color: root.notification.urgency === 2 ? root.theme.dangerContainerText : root.theme.primaryContainerText
-                font.pixelSize: 18
+                font.pixelSize: root.theme.scaledFont(18)
                 font.weight: Font.DemiBold
             }
         }
@@ -53,14 +53,14 @@ Item {
                     Layout.fillWidth: true
                     text: root.notification.appName
                     color: root.theme.containerText
-                    font.pixelSize: 13
+                    font.pixelSize: root.theme.scaledFont(13)
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight
                 }
                 Text {
                     text: root.state.relativeTime(root.notification.time)
                     color: root.theme.containerMuted
-                    font.pixelSize: 11
+                    font.pixelSize: root.theme.scaledFont(11)
                 }
             }
 
@@ -69,7 +69,7 @@ Item {
                 visible: root.notification.summary.length > 0
                 text: root.notification.summary
                 color: root.theme.containerText
-                font.pixelSize: 15
+                font.pixelSize: root.theme.scaledFont(15)
                 font.weight: Font.Medium
                 elide: Text.ElideRight
                 maximumLineCount: 1
@@ -79,7 +79,7 @@ Item {
                 Layout.fillWidth: true
                 text: root.notification.body
                 color: root.theme.containerMuted
-                font.pixelSize: 13
+                font.pixelSize: root.theme.scaledFont(13)
                 wrapMode: Text.Wrap
                 maximumLineCount: 3
                 elide: Text.ElideRight
@@ -87,10 +87,12 @@ Item {
         }
 
         TouchButton {
+            theme: root.theme
             Layout.preferredWidth: 48
             Layout.preferredHeight: 48
             Layout.alignment: Qt.AlignTop
             icon: "close"
+            accessibleName: "Dismiss notification"
             iconSize: 18
             radius: 14
             background: root.theme.surfaceHigh

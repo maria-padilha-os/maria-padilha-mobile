@@ -27,7 +27,9 @@ Item {
             spacing: 10
 
             TouchButton {
+                theme: root.theme
                 icon: "back"
+                accessibleName: "Back"
                 vertical: false
                 iconSize: 22
                 background: root.theme.surfaceHigh
@@ -44,7 +46,7 @@ Item {
                 Text {
                     text: "Notifications"
                     color: root.theme.text
-                    font.pixelSize: 24
+                    font.pixelSize: root.theme.scaledFont(24)
                     font.weight: Font.DemiBold
                 }
                 Text {
@@ -52,11 +54,12 @@ Item {
                         ? "Nothing waiting"
                         : root.state.notificationCount + (root.state.notificationCount === 1 ? " item" : " items")
                     color: root.theme.textMuted
-                    font.pixelSize: 12
+                    font.pixelSize: root.theme.scaledFont(12)
                 }
             }
 
             TouchButton {
+                theme: root.theme
                 visible: root.state.notificationCount > 0
                 icon: "close"
                 label: "Clear"
@@ -92,10 +95,12 @@ Item {
                     Layout.fillWidth: true
                     text: "Focus mode is on"
                     color: root.theme.primaryContainerText
-                    font.pixelSize: 13
+                    font.pixelSize: root.theme.scaledFont(13)
                 }
                 TouchButton {
+                    theme: root.theme
                     icon: "close"
+                    accessibleName: "Turn off focus mode"
                     iconSize: 16
                     implicitWidth: 48
                     implicitHeight: 48
@@ -144,14 +149,14 @@ Item {
                 Text {
                     text: "No notifications"
                     color: root.theme.text
-                    font.pixelSize: 18
+                    font.pixelSize: root.theme.scaledFont(18)
                     font.weight: Font.Medium
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
                 Text {
                     text: "Notifications you receive will appear here."
                     color: root.theme.textMuted
-                    font.pixelSize: 13
+                    font.pixelSize: root.theme.scaledFont(13)
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
             }

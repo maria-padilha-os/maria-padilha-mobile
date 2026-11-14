@@ -22,7 +22,8 @@ Item {
     readonly property int rowCount: Math.max(1, root.rows.length)
     readonly property real rowHeight: {
         const available = root.landscape ? 260 : 400;
-        return Math.max(46, Math.min(root.landscape ? 58 : 82, available / root.rowCount));
+        return Math.max(root.theme.minTouchTarget,
+            Math.min(root.landscape ? 58 : 82, available / root.rowCount));
     }
     readonly property real panelHeight: root.state.inlineKeyboardActive
         ? Math.round(root.rowHeight * root.rowCount + root.keySpacing * (root.rowCount - 1) + root.edgeMargin * 2)
@@ -73,7 +74,7 @@ Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.preferredWidth: root.keyWeight(modelData)
-                        Layout.minimumWidth: 44
+                        Layout.minimumWidth: root.theme.minTouchTarget
 
                         theme: root.theme
                         token: modelData

@@ -54,7 +54,7 @@ Rectangle {
                     Layout.fillWidth: true
                     text: root.telephony.statusLabel
                     color: root.theme.text
-                    font.pixelSize: 15
+                    font.pixelSize: root.theme.scaledFont(15)
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight
                 }
@@ -62,7 +62,7 @@ Rectangle {
                     visible: root.telephony.ready && root.telephony.signalQuality >= 0
                     text: root.telephony.signalQuality + "%"
                     color: root.theme.textMuted
-                    font.pixelSize: 11
+                    font.pixelSize: root.theme.scaledFont(11)
                 }
             }
 
@@ -70,7 +70,7 @@ Rectangle {
                 Layout.fillWidth: true
                 text: root.telephony.statusDetail
                 color: root.theme.textMuted
-                font.pixelSize: 12
+                font.pixelSize: root.theme.scaledFont(12)
                 wrapMode: Text.Wrap
                 maximumLineCount: 3
                 elide: Text.ElideRight
@@ -81,16 +81,18 @@ Rectangle {
                 Layout.fillWidth: true
                 text: "Last operation: " + root.telephony.lastError
                 color: root.theme.danger
-                font.pixelSize: 11
+                font.pixelSize: root.theme.scaledFont(11)
                 elide: Text.ElideRight
             }
         }
 
         TouchButton {
+            theme: root.theme
             Layout.preferredWidth: 48
             Layout.preferredHeight: 48
             Layout.alignment: Qt.AlignTop
             icon: "arrow_up"
+            accessibleName: "Retry connection"
             iconSize: 18
             radius: 14
             background: root.theme.surfaceContainer

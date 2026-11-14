@@ -11,9 +11,13 @@ Item {
     signal clicked()
 
     width: Math.min(parent ? parent.width - 40 : 600, 620)
-    height: 52
+    height: root.theme.touchTarget(52)
     opacity: root.state.toastVisible ? 1.0 : 0.0
     visible: opacity > 0.01
+    objectName: "padilha-touch-target"
+    Accessible.role: Accessible.Button
+    Accessible.name: root.state.toastMessage
+    Accessible.onPressAction: root.clicked()
     anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
     anchors.bottom: parent ? parent.bottom : undefined
     anchors.bottomMargin: root.landscape ? 22 : 102
@@ -47,7 +51,7 @@ Item {
             width: parent.width - 30
             text: root.state.toastMessage
             color: root.theme.inverseText
-            font.pixelSize: 13
+            font.pixelSize: root.theme.scaledFont(13)
             elide: Text.ElideRight
             maximumLineCount: 1
             anchors.verticalCenter: parent.verticalCenter

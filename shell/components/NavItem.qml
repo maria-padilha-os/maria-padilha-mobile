@@ -13,12 +13,13 @@ Item {
     property bool isLock: false
     signal clicked()
 
-    implicitWidth: 72
-    implicitHeight: 72
+    implicitWidth: root.theme.touchTarget(72)
+    implicitHeight: root.theme.touchTarget(72)
 
     readonly property bool active: root.isLock ? root.state.locked : (!root.state.locked && root.state.surface === root.surface)
 
     TouchButton {
+        theme: root.theme
         anchors.fill: parent
         icon: root.icon
         label: root.label
@@ -49,7 +50,7 @@ Item {
             anchors.centerIn: parent
             text: root.state.notificationCount > 9 ? "9+" : root.state.notificationCount
             color: root.theme.dangerText
-            font.pixelSize: root.state.notificationCount > 9 ? 8 : 10
+            font.pixelSize: root.theme.scaledFont(root.state.notificationCount > 9 ? 8 : 10)
             font.weight: Font.Bold
         }
     }

@@ -98,6 +98,10 @@ PADILHA_SHELL_SURFACE=lock PADILHA_SHELL_PIN=1234 quickshell -p "$PWD/shell"
 # override the colour state (the default is the live desktop state)
 PADILHA_SCHEME="$HOME/.local/state/caelestia/scheme.json" quickshell -p "$PWD/shell"
 
+# scale text (0.8-2.0) and raise the minimum touch target (48-96 px)
+PADILHA_SHELL_FONT_SCALE=1.5 PADILHA_SHELL_TOUCH_TARGET=56 \
+  quickshell -p "$PWD/shell"
+
 # force the small in-shell fallback keyboard for a screenshot or demo
 PADILHA_SHELL_OSK=inline PADILHA_SHELL_KEYBOARD=1 \
   PADILHA_SHELL_KEYBOARD_PURPOSE=terminal quickshell -p "$PWD/shell"
@@ -108,7 +112,9 @@ back to `~/.local/state/caelestia/scheme.json` and then to
 [`shell/palettes/padilha-light.json`](shell/palettes/padilha-light.json), so the
 same shell starts in a fresh QEMU guest with no desktop state. Generated
 foreground roles are checked for contrast before use; an inconsistent scheme
-cannot produce light text on a light surface.
+cannot produce light text on a light surface. The font-scale, touch-target,
+contrast and manual screen-reader/keyboard requirements are in
+[`docs/accessibility.md`](docs/accessibility.md).
 
 The window can also be driven by `qs ipc call padilha-shell ...` while Quickshell
 is running (`home`, `launcher`, `notifications`, `calls`, `messages`, `lock`,
@@ -208,13 +214,16 @@ done
 | Keyboard | fallback panel ends above the focused search field; terminal, URL and password layouts are selectable | wide keys, shorter panel, focused field still visible |
 | Palette | light and dark state readable, no light-on-light text | same |
 | Touch | every actionable target is at least 48 px; keypad, nav, keys and quick actions are larger | same |
+| Accessibility | 150% text stays readable; focus ring and touch targets remain visible | same |
 
 Run `make test` to check the keyboard config/layouts/privacy policy, the
-palette fixtures, the contrast guard, QML lint, the shell self-test and
-offscreen renders at both resolutions. The visual test also verifies that each
-PNG has the expected dimensions and is not a blank surface. The real
-Squeekboard session is verified separately with the
-[manual QEMU checklist](docs/qemu-keyboard-checklist.md).
+palette fixtures, the guarded contrast of every generated light/dark role, QML
+lint, scalable-font/touch-target/accessible-name checks, the shell self-test
+and offscreen renders at both resolutions. The visual test also verifies that
+each PNG has the expected dimensions and is not a blank surface. The real
+Squeekboard, screen-reader and physical-keyboard sessions are verified
+separately with the [manual accessibility checklist](docs/accessibility.md) and
+the [manual QEMU keyboard checklist](docs/qemu-keyboard-checklist.md).
 
 ## Power, battery and thermal
 
@@ -318,6 +327,7 @@ make check        # unprivileged config/files/secrets/checksum gate
 make build        # full QEMU image build on a builder with sudo/doas
 make qemu         # boot the checked image with QEMU
 make test         # CI checks
+make accessibility-test # palette, contrast, font/touch and checklist gates
 make keyboard-test # Squeekboard config/layout/privacy checks only
 make power-test    # power config, diagnostic fixtures, threshold no-op, suspend guard
 make modem-test    # ModemManager policy, no-modem daemon and emulated call/SMS flow

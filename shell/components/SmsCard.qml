@@ -43,7 +43,7 @@ Rectangle {
                 Layout.fillWidth: true
                 text: (root.incoming ? "From " : "To ") + (root.message ? root.message.number : "")
                 color: root.theme.text
-                font.pixelSize: 13
+                font.pixelSize: root.theme.scaledFont(13)
                 font.weight: Font.DemiBold
                 elide: Text.ElideRight
             }
@@ -51,7 +51,7 @@ Rectangle {
             Text {
                 text: root.message ? (root.message.stateLabel || root.message.state) : ""
                 color: root.theme.textMuted
-                font.pixelSize: 11
+                font.pixelSize: root.theme.scaledFont(11)
             }
         }
 
@@ -59,7 +59,7 @@ Rectangle {
             Layout.fillWidth: true
             text: root.message ? root.message.text : ""
             color: root.theme.containerText
-            font.pixelSize: 14
+            font.pixelSize: root.theme.scaledFont(14)
             wrapMode: Text.Wrap
             maximumLineCount: 6
             elide: Text.ElideRight
@@ -77,11 +77,12 @@ Rectangle {
                     return String(root.message.timestamp).replace("T", " ").substring(0, 16);
                 }
                 color: root.theme.textMuted
-                font.pixelSize: 11
+                font.pixelSize: root.theme.scaledFont(11)
                 elide: Text.ElideRight
             }
 
             TouchButton {
+                theme: root.theme
                 icon: "message"
                 label: "Reply"
                 vertical: false
@@ -93,7 +94,9 @@ Rectangle {
             }
 
             TouchButton {
+                theme: root.theme
                 icon: "delete"
+                accessibleName: "Delete message"
                 iconSize: 17
                 implicitWidth: 48
                 implicitHeight: 48

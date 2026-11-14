@@ -12,7 +12,9 @@ Item {
     property bool landscape: false
     signal notificationsRequested()
 
-    implicitHeight: landscape ? 56 : 64
+    implicitHeight: Math.max(root.landscape ? 56 : 64,
+        root.theme.scaledFont(root.landscape ? 23 : 25)
+        + (root.landscape ? root.theme.scaledFont(12) : 0) + 16)
 
     SystemClock {
         id: clock
@@ -44,14 +46,14 @@ Item {
             Text {
                 text: Qt.formatTime(clock.date, "HH:mm")
                 color: root.theme.text
-                font.pixelSize: root.landscape ? 23 : 25
+                font.pixelSize: root.theme.scaledFont(root.landscape ? 23 : 25)
                 font.weight: Font.DemiBold
             }
             Text {
                 visible: root.landscape
                 text: Qt.formatDate(clock.date, "ddd d MMM")
                 color: root.theme.textMuted
-                font.pixelSize: 12
+                font.pixelSize: root.theme.scaledFont(12)
             }
         }
 
@@ -75,7 +77,7 @@ Item {
                 visible: root.landscape && root.state.telephony.operatorShort.length > 0
                 text: root.state.telephony.operatorShort
                 color: root.theme.textMuted
-                font.pixelSize: 11
+                font.pixelSize: root.theme.scaledFont(11)
                 anchors.verticalCenter: parent.verticalCenter
             }
         }
@@ -94,7 +96,7 @@ Item {
                 visible: root.landscape
                 text: root.state.device.networkShort
                 color: root.theme.textMuted
-                font.pixelSize: 12
+                font.pixelSize: root.theme.scaledFont(12)
                 anchors.verticalCenter: parent.verticalCenter
             }
         }
@@ -123,14 +125,14 @@ Item {
                 text: root.state.device.batteryLabel
                 color: root.state.device.batteryCritical || root.state.device.batteryLow
                     ? root.theme.danger : root.theme.textMuted
-                font.pixelSize: 12
+                font.pixelSize: root.theme.scaledFont(12)
                 anchors.verticalCenter: parent.verticalCenter
             }
             Text {
                 visible: root.landscape && root.state.device.batteryTimeLabel.length > 0
                 text: root.state.device.batteryTimeLabel
                 color: root.theme.textMuted
-                font.pixelSize: 11
+                font.pixelSize: root.theme.scaledFont(11)
                 anchors.verticalCenter: parent.verticalCenter
             }
         }
@@ -141,8 +143,10 @@ Item {
             Layout.alignment: Qt.AlignVCenter
 
             TouchButton {
+                theme: root.theme
                 anchors.fill: parent
                 icon: "bell"
+                accessibleName: "Notifications"
                 iconSize: 23
                 foreground: root.theme.text
                 activeForeground: root.theme.primaryContainerText
@@ -167,7 +171,7 @@ Item {
                     anchors.centerIn: parent
                     text: root.state.notificationCount > 9 ? "9+" : root.state.notificationCount
                     color: root.theme.dangerText
-                    font.pixelSize: root.state.notificationCount > 9 ? 8 : 10
+                    font.pixelSize: root.theme.scaledFont(root.state.notificationCount > 9 ? 8 : 10)
                     font.weight: Font.Bold
                 }
             }

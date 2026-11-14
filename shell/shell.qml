@@ -59,6 +59,30 @@ ShellRoot {
     readonly property bool selfTest: Quickshell.env("PADILHA_SHELL_SELFTEST") === "1"
     readonly property bool telephonySelfTest: Quickshell.env("PADILHA_SHELL_TELEPHONY_SELFTEST") === "1"
 
+    // Runtime accessory for the self-test: walk the live item tree and find
+    // controls that opted in to the shared touch-target contract. Hidden
+    // surfaces are skipped so only what a user could actually tap is checked.
+    function _effectivelyVisible(item) {
+        let node = item;
+        while (node) {
+            if (node.visible === false)
+                return false;
+            node = node.parent;
+        }
+        return true;
+    }
+
+    function _collectTouchTargets(item, result) {
+        if (!item)
+            return result;
+        if (item.objectName === "padilha-touch-target" && root._effectivelyVisible(item))
+            result.push(item);
+        const children = item.children || [];
+        for (let i = 0; i < children.length; ++i)
+            root._collectTouchTargets(children[i], result);
+        return result;
+    }
+
     Theme {
         id: theme
     }
@@ -277,6 +301,11 @@ ShellRoot {
                 network: state.device.networkLabel,
                 palette: theme.source,
                 mode: theme.mode,
+                fontScale: theme.fontScale,
+                minTouchTarget: theme.minTouchTarget,
+                textContrastThreshold: theme.textContrastThreshold,
+                nonTextContrastThreshold: theme.nonTextContrastThreshold,
+                contrastFailures: theme.contrastFailures(),
                 keyboardMode: state.keyboardMode,
                 keyboardVisible: state.inlineKeyboardActive,
                 keyboardPurpose: state.keyboardPurpose,
@@ -343,14 +372,23 @@ ShellRoot {
         running: root.selfTest
         onTriggered: {
             console.log("PADILHA_SHELL_SELFTEST_DETAIL",
-                theme.source, theme.mode,
-                "primary", theme.primary, theme.primaryText, theme.contrastRatio(theme.primaryText, theme.primary),
-                "danger", theme.danger, theme.dangerText, theme.contrastRatio(theme.dangerText, theme.danger),
-                "rawonprimary", theme._role("onPrimary"), theme.contrastRatio("#ffffff", theme.primary),
-                "coloronprimary", theme.contrastRatio(Qt.color("#ffffff"), Qt.color(theme.primary)),
-                "best1", theme.bestOn(theme.primary, "#ffffff"),
-                "best2", theme.bestOn(theme.primary, theme._role("onPrimary")),
-                "prefcont", theme.contrastRatio(theme._role("onPrimary"), theme.primary));
+                "palette", theme.source, "mode", theme.mode,
+                "fontScale", theme.fontScale,
+                "minTouchTarget", theme.minTouchTarget,
+                "textContrast", theme.textContrastThreshold,
+                "nonTextContrast", theme.nonTextContrastThreshold);
+            const contrastFailures = theme.contrastFailures();
+            const touchTargets = root._collectTouchTargets(surfaceRoot, []);
+            const undersizedTargets = touchTargets.filter(target =>
+                target.width + 0.5 < theme.minTouchTarget ||
+                target.height + 0.5 < theme.minTouchTarget);
+            for (const failure of contrastFailures)
+                console.log("FAIL", "selftest", "contrast", failure);
+            for (const target of undersizedTargets.slice(0, 8)) {
+                console.log("FAIL", "selftest", "touch-target",
+                    target.accessibleName || target.objectName,
+                    Math.round(target.width) + "x" + Math.round(target.height));
+            }
             const beforeNotify = state.notificationCount;
             state.addDemoNotification();
             const addOk = state.notificationCount === beforeNotify + 1;
@@ -369,11 +407,14 @@ ShellRoot {
             const keyboardAvoidanceOk = root.compositorKeyboardFraction > 0;
             const checks = [
                 ["theme-ready", theme.ready],
-                ["surface-text", theme.contrastRatio(theme.text, theme.surface) >= 4.5],
-                ["container-text", theme.contrastRatio(theme.containerText, theme.surfaceContainer) >= 4.5],
-                ["primary-text", theme.contrastRatio(theme.primaryText, theme.primary) >= 4.5],
-                ["danger-text", theme.contrastRatio(theme.dangerText, theme.danger) >= 4.5],
-                ["inverse-text", theme.contrastRatio(theme.inverseText, theme.inverseSurface) >= 4.5],
+                ["font-scale-range", theme.fontScale >= theme.fontScaleMinimum &&
+                    theme.fontScale <= theme.fontScaleMaximum],
+                ["touch-target-token", theme.minTouchTarget >= 48],
+                ["touch-target-floor", theme.touchTarget(1) === theme.minTouchTarget],
+                ["touch-targets-found", touchTargets.length >= 8],
+                ["touch-targets-sized", undersizedTargets.length === 0],
+                ["keyboard-key-target", keyboard.rowHeight >= theme.minTouchTarget],
+                ["contrast-roles", contrastFailures.length === 0],
                 ["apps-loaded", state.apps.length > 0],
                 ["notification-add", addOk],
                 ["notification-clear", clearOk],

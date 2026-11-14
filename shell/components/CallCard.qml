@@ -62,7 +62,7 @@ Rectangle {
                     Layout.fillWidth: true
                     text: root.call ? root.call.number : ""
                     color: root.ringing ? root.theme.primaryContainerText : root.theme.text
-                    font.pixelSize: 20
+                    font.pixelSize: root.theme.scaledFont(20)
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight
                 }
@@ -70,21 +70,21 @@ Rectangle {
                     Layout.fillWidth: true
                     text: root.directionLabel + (root.call && root.call.multiparty ? " · conference" : "")
                     color: root.ringing ? root.theme.primaryContainerText : root.theme.textMuted
-                    font.pixelSize: 12
+                    font.pixelSize: root.theme.scaledFont(12)
                 }
             }
 
             Rectangle {
                 implicitWidth: stateText.implicitWidth + 18
-                implicitHeight: 30
-                radius: 15
+                implicitHeight: Math.max(30, root.theme.scaledFont(11) + 14)
+                radius: implicitHeight / 2
                 color: root.ringing ? root.theme.primary : root.theme.surfaceHigh
                 Text {
                     id: stateText
                     anchors.centerIn: parent
                     text: root.call ? (root.call.stateLabel || root.call.state) : ""
                     color: root.ringing ? root.theme.primaryText : root.theme.highText
-                    font.pixelSize: 11
+                    font.pixelSize: root.theme.scaledFont(11)
                     font.weight: Font.Medium
                 }
             }
@@ -95,6 +95,7 @@ Rectangle {
             spacing: 10
 
             TouchButton {
+                theme: root.theme
                 visible: root.ringing
                 Layout.fillWidth: true
                 Layout.preferredHeight: 52
@@ -110,6 +111,7 @@ Rectangle {
             }
 
             TouchButton {
+                theme: root.theme
                 Layout.fillWidth: true
                 Layout.preferredHeight: 52
                 icon: "close"

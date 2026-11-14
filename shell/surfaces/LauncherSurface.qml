@@ -26,7 +26,9 @@ Item {
             spacing: 10
 
             TouchButton {
+                theme: root.theme
                 icon: "back"
+                accessibleName: "Back"
                 vertical: false
                 iconSize: 22
                 background: root.theme.surfaceHigh
@@ -43,13 +45,13 @@ Item {
                 Text {
                     text: "Apps"
                     color: root.theme.text
-                    font.pixelSize: 24
+                    font.pixelSize: root.theme.scaledFont(24)
                     font.weight: Font.DemiBold
                 }
                 Text {
                     text: root.state.filteredApps.length + " available"
                     color: root.theme.textMuted
-                    font.pixelSize: 12
+                    font.pixelSize: root.theme.scaledFont(12)
                 }
             }
 
@@ -100,7 +102,7 @@ Item {
                         color: root.theme.highText
                         selectionColor: root.theme.primaryContainer
                         selectedTextColor: root.theme.primaryContainerText
-                        font.pixelSize: 17
+                        font.pixelSize: root.theme.scaledFont(17)
                         inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
                         onTextChanged: root.state.appQuery = text
                         onActiveFocusChanged: {
@@ -122,13 +124,15 @@ Item {
                         visible: input.text.length === 0
                         text: "Search apps"
                         color: root.theme.highMuted
-                        font.pixelSize: 17
+                        font.pixelSize: root.theme.scaledFont(17)
                     }
                 }
 
                 TouchButton {
+                    theme: root.theme
                     visible: input.text.length > 0
                     icon: "close"
+                    accessibleName: "Clear search"
                     iconSize: 17
                     implicitWidth: 48
                     implicitHeight: 48
@@ -190,7 +194,7 @@ Item {
                 Text {
                     text: "No apps match “" + root.state.appQuery + "”"
                     color: root.theme.textMuted
-                    font.pixelSize: 15
+                    font.pixelSize: root.theme.scaledFont(15)
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
             }

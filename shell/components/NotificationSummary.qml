@@ -11,11 +11,18 @@ Item {
     property bool landscape: false
     signal clicked()
 
-    implicitHeight: landscape ? 82 : 92
+    implicitHeight: Math.max(root.theme.minTouchTarget,
+        (landscape ? 82 : 92) + Math.max(0, root.theme.scaledFont(15) - 15))
     scale: tap.pressed ? 0.985 : 1.0
+    objectName: "padilha-touch-target"
+    activeFocusOnTab: true
     Accessible.role: Accessible.Button
     Accessible.name: "Notifications"
     Accessible.onPressAction: root.clicked()
+
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
+    Keys.onSpacePressed: root.clicked()
 
     Behavior on scale {
         NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
@@ -25,8 +32,8 @@ Item {
         anchors.fill: parent
         radius: 22
         color: root.theme.surfaceContainer
-        border.width: 1
-        border.color: root.theme.outlineVariant
+        border.width: root.activeFocus ? 2 : 1
+        border.color: root.activeFocus ? root.theme.accent : root.theme.outlineVariant
 
         RowLayout {
             anchors.fill: parent
@@ -55,14 +62,14 @@ Item {
                     Text {
                         text: "Notifications"
                         color: root.theme.containerText
-                        font.pixelSize: 15
+                        font.pixelSize: root.theme.scaledFont(15)
                         font.weight: Font.DemiBold
                     }
                     Rectangle {
                         visible: root.state.notificationCount > 0
                         width: Math.max(20, countLabel.implicitWidth + 10)
-                        height: 20
-                        radius: 10
+                        height: Math.max(20, root.theme.scaledFont(11) + 8)
+                        radius: height / 2
                         color: root.theme.danger
                         anchors.verticalCenter: parent.verticalCenter
                         Text {
@@ -70,7 +77,7 @@ Item {
                             anchors.centerIn: parent
                             text: root.state.notificationCount
                             color: root.theme.dangerText
-                            font.pixelSize: 11
+                            font.pixelSize: root.theme.scaledFont(11)
                             font.weight: Font.Bold
                         }
                     }
@@ -83,7 +90,7 @@ Item {
                             ? root.state.notifications[0].summary + " · " + root.state.notifications[0].body
                             : root.state.notifications[0].body
                     color: root.theme.containerMuted
-                    font.pixelSize: 13
+                    font.pixelSize: root.theme.scaledFont(13)
                     elide: Text.ElideRight
                     maximumLineCount: 1
                 }

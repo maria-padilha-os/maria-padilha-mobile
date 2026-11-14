@@ -16,6 +16,7 @@ GridLayout {
     columnSpacing: 10
 
     TouchButton {
+        theme: root.theme
         Layout.fillWidth: true
         Layout.preferredHeight: root.landscape ? 76 : 84
         icon: root.state.device.networkIcon
@@ -29,6 +30,7 @@ GridLayout {
     }
 
     TouchButton {
+        theme: root.theme
         Layout.fillWidth: true
         Layout.preferredHeight: root.landscape ? 76 : 84
         icon: "moon"
@@ -48,6 +50,7 @@ GridLayout {
     }
 
     TouchButton {
+        theme: root.theme
         Layout.fillWidth: true
         Layout.preferredHeight: root.landscape ? 76 : 84
         icon: "lock"

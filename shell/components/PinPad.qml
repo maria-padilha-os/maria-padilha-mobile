@@ -9,7 +9,8 @@ GridLayout {
     required property Theme theme
     required property ShellState state
     property bool landscape: false
-    property int keyHeight: landscape ? 54 : 64
+    property int keyHeight: root.theme.touchTarget(Math.max(landscape ? 54 : 64,
+        root.theme.scaledFont(24) + 16))
     signal digitPressed(string digit)
 
     columns: 3
@@ -21,10 +22,13 @@ GridLayout {
 
         delegate: TouchButton {
             required property string modelData
+            theme: root.theme
             Layout.fillWidth: true
             Layout.preferredHeight: root.keyHeight
             icon: modelData === "backspace" ? "backspace" : modelData === "check" ? "check" : ""
             label: modelData === "backspace" || modelData === "check" ? "" : modelData
+            accessibleName: modelData === "backspace" ? "Backspace"
+                : modelData === "check" ? "Unlock" : modelData
             iconSize: 24
             labelSize: 24
             vertical: false

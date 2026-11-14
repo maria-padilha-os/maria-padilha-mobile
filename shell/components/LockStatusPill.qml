@@ -27,7 +27,7 @@ Rectangle {
         Text {
             text: root.state.notificationCount + " new"
             color: root.theme.primaryContainerText
-            font.pixelSize: 11
+            font.pixelSize: root.theme.scaledFont(11)
             font.weight: Font.Medium
             anchors.verticalCenter: parent.verticalCenter
         }
