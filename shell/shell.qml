@@ -61,6 +61,7 @@ ShellRoot {
     readonly property bool selfTest: Quickshell.env("PADILHA_SHELL_SELFTEST") === "1"
     readonly property bool settingsSelfTest: Quickshell.env("PADILHA_SETTINGS_SELFTEST") === "1"
     readonly property bool telephonySelfTest: Quickshell.env("PADILHA_SHELL_TELEPHONY_SELFTEST") === "1"
+    readonly property bool cameraSelfTest: Quickshell.env("PADILHA_SHELL_CAMERA_SELFTEST") === "1"
 
     // Runtime accessory for the self-test: walk the live item tree and find
     // controls that opted in to the shared touch-target contract. Hidden
@@ -229,6 +230,15 @@ ShellRoot {
                             onClosed: state.openSurface("home")
                         }
 
+                        CameraSurface {
+                            anchors.fill: parent
+                            visible: !state.locked && state.surface === "camera"
+                            landscape: root.landscape
+                            theme: theme
+                            state: state
+                            onClosed: state.openSurface("home")
+                        }
+
                         LockSurface {
                             anchors.fill: parent
                             visible: state.locked
@@ -298,6 +308,10 @@ ShellRoot {
             state.openSettingsPage(page);
         }
 
+        function camera() {
+            state.openSurface("camera");
+        }
+
         function lock() {
             state.lock();
         }
@@ -342,7 +356,13 @@ ShellRoot {
                 modemPresent: state.telephony.modemPresent,
                 operator: state.telephony.operatorName,
                 calls: state.telephony.calls.length,
-                messages: state.telephony.messages.length
+                messages: state.telephony.messages.length,
+                camera: state.camera.state,
+                cameraAvailable: state.camera.available,
+                cameraPresent: state.camera.cameraPresent,
+                cameraPermission: state.camera.permission,
+                cameraPreview: state.camera.previewMode,
+                cameraFallback: state.camera.fallback
             });
         }
     }
@@ -413,6 +433,37 @@ ShellRoot {
             settings.setBatteryCriticalLevel(15);
             settings.setChargingNotifications(false);
             settings.setWifiEnabled(false);
+        }
+    }
+
+    Timer {
+        id: cameraSelfTestTimer
+        interval: 5000
+        running: root.cameraSelfTest
+        onTriggered: {
+            const camera = state.camera;
+            const checks = [
+                ["backend-enabled", camera.bridgeEnabled],
+                ["portal-available", camera.portalAvailable],
+                ["camera-present", camera.cameraPresent],
+                ["permission-granted", camera.permission === "granted"],
+                ["state-ready", camera.state === "ready"],
+                ["available", camera.available],
+                ["can-capture", camera.canCapture],
+                ["fallback-test-pattern", camera.fallback === "test-pattern"],
+                ["preview-idle", camera.previewMode === "idle"],
+                ["no-captured-image", camera.imagePath.length === 0]
+            ];
+            let failed = 0;
+            for (const check of checks) {
+                console.log(check[1] ? "ok" : "FAIL", "camera-selftest", check[0]);
+                if (!check[1])
+                    ++failed;
+            }
+            console.log(failed === 0
+                ? "PADILHA_SHELL_CAMERA_SELFTEST_PASS"
+                : "PADILHA_SHELL_CAMERA_SELFTEST_FAIL");
+            Qt.exit(failed === 0 ? 0 : 1);
         }
     }
 
@@ -551,7 +602,11 @@ ShellRoot {
                 ["telephony-demo", state.telephony.demo === true],
                 ["telephony-modem", state.telephony.modemPresent === true],
                 ["telephony-calls", state.telephony.calls.length >= 0],
-                ["telephony-messages", state.telephony.messages.length > 0]
+                ["telephony-messages", state.telephony.messages.length > 0],
+                ["camera-state", state.camera.state.length > 0],
+                ["camera-demo", state.camera.demo === true],
+                ["camera-fallback", state.camera.fallback === "test-pattern"],
+                ["camera-preview", state.camera.previewMode === "test-pattern"]
             ];
             let failed = 0;
             for (const check of checks) {

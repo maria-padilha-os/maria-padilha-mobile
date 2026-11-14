@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SHELL = ROOT / "shell"
 QML_FILES = sorted(SHELL.rglob("*.qml"))
 COLOUR_LITERAL = re.compile(r"(?<![&\w])#[0-9a-fA-F]{3,8}\b")
-COLOUR_FALLBACK_FILES = {"Theme.qml", "Icon.qml", "TouchButton.qml"}
+COLOUR_FALLBACK_FILES = {"Theme.qml", "Icon.qml", "TouchButton.qml", "CameraTestPattern.qml"}
 
 
 def touch_button_blocks(text: str) -> list[list[str]]:
