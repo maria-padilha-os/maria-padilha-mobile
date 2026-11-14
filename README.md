@@ -34,6 +34,15 @@ for screenshots. It is a prototype, not the session image: it adds no device
 daemons, authentication backend or flashing code. The full component notes are
 in [`shell/README.md`](shell/README.md).
 
+**Touch settings surface in place.** The shell now has Network, Display, Sound,
+Battery, Language and About pages with 48 px+ touch targets, a light/dark-safe
+Padilha palette and a live scale preview. Preferences use the existing
+`~/.config/padilha/shell.json` keys; brightness, volume/mute and Wi-Fi remain
+owned by the backlight subsystem, PipeWire/WirePlumber and NetworkManager.
+Navigation, validation, persistence and demo network safety are covered by
+`make settings-test`. See [`docs/settings.md`](docs/settings.md) for the pages,
+config keys and boundaries.
+
 **On-screen keyboard decided.** [ADR 0002](docs/adr/0002-on-screen-keyboard.md)
 selects Squeekboard over Maliit for the Phosh image. The image installs the
 keyboard package, and the repository ships Padilha layouts for terminals, URL
@@ -111,8 +120,10 @@ foreground roles are checked for contrast before use; an inconsistent scheme
 cannot produce light text on a light surface.
 
 The window can also be driven by `qs ipc call padilha-shell ...` while Quickshell
-is running (`home`, `launcher`, `notifications`, `calls`, `messages`, `lock`,
-`unlock`, `demoNotification`, `status`).
+is running (`home`, `launcher`, `notifications`, `calls`, `messages`, `settings`,
+`settingsPage <page>`, `lock`, `unlock`, `demoNotification`, `status`). The
+settings pages are `network`, `display`, `sound`, `battery`, `language` and
+`about`.
 
 ### On-screen keyboard
 
@@ -177,10 +188,17 @@ windows or the agent terminal.
 ```sh
 mkdir -p .scratch/screens
 for size in 720x1280 1280x720; do
-  for surface in home launcher notifications lock calls messages; do
+  for surface in home launcher notifications lock calls messages settings; do
     PADILHA_SHELL_DEMO=1 PADILHA_SHELL_SIZE="$size" \
       PADILHA_SHELL_SURFACE="$surface" \
       PADILHA_SHELL_GRAB="$PWD/.scratch/screens/$surface-$size.png" \
+      QT_QPA_PLATFORM=offscreen QSG_RHI_BACKEND=software \
+      quickshell -p "$PWD/shell"
+  done
+  for page in network display sound battery language about; do
+    PADILHA_SHELL_DEMO=1 PADILHA_SHELL_SIZE="$size" \
+      PADILHA_SHELL_SURFACE=settings PADILHA_SHELL_SETTINGS_PAGE="$page" \
+      PADILHA_SHELL_GRAB="$PWD/.scratch/screens/settings-$page-$size.png" \
       QT_QPA_PLATFORM=offscreen QSG_RHI_BACKEND=software \
       quickshell -p "$PWD/shell"
   done
@@ -205,16 +223,18 @@ done
 | Lock | clock, privacy-safe count, 64 px keys, four PIN dots, any four digits unlock | clock left, 54 px keypad right |
 | Calls | status card, number display, 62 px dial pad, incoming/active call actions | status card, number display and dial pad within a 620 px column |
 | Messages | status card, message cards, reply/delete and compose panel above the nav bar | same, capped at 760 px width |
+| Settings | six category cards, full-width page with back target, scrollable rows | persistent category rail, page content beside it |
 | Keyboard | fallback panel ends above the focused search field; terminal, URL and password layouts are selectable | wide keys, shorter panel, focused field still visible |
 | Palette | light and dark state readable, no light-on-light text | same |
 | Touch | every actionable target is at least 48 px; keypad, nav, keys and quick actions are larger | same |
 
 Run `make test` to check the keyboard config/layouts/privacy policy, the
 palette fixtures, the contrast guard, QML lint, the shell self-test and
-offscreen renders at both resolutions. The visual test also verifies that each
-PNG has the expected dimensions and is not a blank surface. The real
-Squeekboard session is verified separately with the
-[manual QEMU checklist](docs/qemu-keyboard-checklist.md).
+offscreen renders at both resolutions. `make settings-test` adds the settings
+navigation/validation/persistence self-test and renders every settings page in
+both palettes. The visual test also verifies that each PNG has the expected
+dimensions and is not a blank surface. The real Squeekboard session is verified
+separately with the [manual QEMU checklist](docs/qemu-keyboard-checklist.md).
 
 ## Power, battery and thermal
 
@@ -319,6 +339,8 @@ make build        # full QEMU image build on a builder with sudo/doas
 make qemu         # boot the checked image with QEMU
 make test         # CI checks
 make keyboard-test # Squeekboard config/layout/privacy checks only
+make shell-test    # shell self-test, palette and responsive renders
+make settings-test # settings navigation/validation/persistence and page renders
 make power-test    # power config, diagnostic fixtures, threshold no-op, suspend guard
 make modem-test    # ModemManager policy, no-modem daemon and emulated call/SMS flow
 make power-diagnostic # one-shot read-only battery/thermal/suspend report

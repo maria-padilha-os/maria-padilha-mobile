@@ -54,7 +54,14 @@ check_text README.md "### Screenshot checklist" "README has the screenshot check
 check_text README.md "quickshell -p" "README documents the shell launch"
 check_text README.md "$shell_readme" "README links the shell notes"
 check_text "$shell_readme" "## Palette wiring" "shell notes document palette wiring"
+check_text "$shell_readme" "## Settings" "shell notes document the settings surface"
 check_text "$shell_readme" "## Verification" "shell notes document verification"
+
+settings_doc=docs/settings.md
+if [ -s "$settings_doc" ]; then echo "ok $settings_doc"; else echo "FAIL $settings_doc missing"; fail=1; fi
+check_text README.md "$settings_doc" "README links the settings notes"
+check_text "$settings_doc" "appearance.font.scale" "settings notes name the display-scale config key"
+check_text "$settings_doc" "PADILHA_SETTINGS_SELFTEST" "settings notes document the self-test hook"
 
 
 if grep -q 'scripts/build.sh' README.md; then
@@ -96,6 +103,13 @@ if bash tests/modem.sh; then
   echo "ok tests/modem.sh"
 else
   echo "FAIL tests/modem.sh"
+  fail=1
+fi
+
+if bash tests/settings.sh; then
+  echo "ok tests/settings.sh"
+else
+  echo "FAIL tests/settings.sh"
   fail=1
 fi
 

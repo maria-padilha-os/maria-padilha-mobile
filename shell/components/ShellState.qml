@@ -17,6 +17,7 @@ Item {
 
     property bool demo: false
     property string surface: "home"
+    property string settingsPage: "index"
     property bool locked: false
     property bool dnd: false
     property string appQuery: ""
@@ -28,12 +29,14 @@ Item {
     property var latestNotification: null
 
     readonly property int notificationCount: notifications.length
+    readonly property var settingsPages: ["index", "network", "display", "sound", "battery", "language", "about"]
 
     // Keyboard state. The compositor keyboard (Squeekboard) is the primary
     // backend; the inline fallback panel is used only when the environment
     // asks for it or an auto-mode compositor never reports a keyboard.
     readonly property KeyboardLayouts keyboardLayouts: KeyboardLayouts {}
     readonly property TelephonyService telephony: TelephonyService {}
+    readonly property SettingsStore settings: SettingsStore {}
     readonly property bool keyboardForced: Quickshell.env("PADILHA_SHELL_KEYBOARD") === "1"
     readonly property string keyboardMode: {
         const mode = String(Quickshell.env("PADILHA_SHELL_OSK") || "compositor").toLowerCase();
@@ -70,7 +73,27 @@ Item {
             root.locked = true;
             return "home";
         }
-        return ["home", "launcher", "notifications", "calls", "messages"].includes(requested) ? requested : "home";
+        if (requested === "settings")
+            root.settingsPage = normalizeSettingsPage(Quickshell.env("PADILHA_SHELL_SETTINGS_PAGE") || "index");
+        return ["home", "launcher", "notifications", "calls", "messages", "settings"].includes(requested)
+            ? requested : "home";
+    }
+
+    function normalizeSettingsPage(page) {
+        const value = String(page || "index").toLowerCase();
+        return root.settingsPages.includes(value) ? value : "index";
+    }
+
+    function openSettingsPage(page) {
+        if (root.locked) {
+            toast("Unlock first");
+            return;
+        }
+        const next = normalizeSettingsPage(page);
+        if (root.surface !== "settings")
+            hideKeyboard();
+        root.settingsPage = next;
+        root.surface = "settings";
     }
 
     function openSurface(name) {
@@ -82,7 +105,7 @@ Item {
             toast("Unlock first");
             return;
         }
-        if (["home", "launcher", "notifications", "calls", "messages"].includes(name)) {
+        if (["home", "launcher", "notifications", "calls", "messages", "settings"].includes(name)) {
             if (root.surface !== name)
                 hideKeyboard();
             root.surface = name;
@@ -352,6 +375,8 @@ Item {
         if (!app)
             return;
         if (app.surface) {
+            if (app.surface === "settings")
+                root.settingsPage = "index";
             root.openSurface(app.surface);
             return;
         }
@@ -370,7 +395,8 @@ Item {
 
     property var shellApps: [
         { name: "Calls", icon: "phone", id: "shell.calls", entry: null, demo: false, surface: "calls" },
-        { name: "Messages", icon: "message", id: "shell.messages", entry: null, demo: false, surface: "messages" }
+        { name: "Messages", icon: "message", id: "shell.messages", entry: null, demo: false, surface: "messages" },
+        { name: "Settings", icon: "settings", id: "shell.settings", entry: null, demo: false, surface: "settings" }
     ]
 
     property var demoApps: [
@@ -383,8 +409,7 @@ Item {
         { name: "Camera", icon: "camera", id: "demo.camera", entry: null, demo: true },
         { name: "Weather", icon: "weather", id: "demo.weather", entry: null, demo: true },
         { name: "Clock", icon: "clock", id: "demo.clock", entry: null, demo: true },
-        { name: "Calculator", icon: "calculate", id: "demo.calculator", entry: null, demo: true },
-        { name: "Settings", icon: "settings", id: "demo.settings", entry: null, demo: true }
+        { name: "Calculator", icon: "calculate", id: "demo.calculator", entry: null, demo: true }
     ]
 
     Component.onCompleted: {

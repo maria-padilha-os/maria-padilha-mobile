@@ -1,6 +1,6 @@
-// Three large touch actions. Network is a status tile (it does not change the
-// host network), Focus is a local do-not-disturb toggle, Lock raises the lock
-// surface. No privileged or device-daemon calls are made.
+// Three large touch actions. Network opens the settings network page, Focus is
+// a local do-not-disturb toggle, Lock raises the lock surface. No privileged or
+// device-daemon calls are made.
 
 import QtQuick
 import QtQuick.Layouts
@@ -25,7 +25,7 @@ GridLayout {
         foreground: root.theme.text
         background: root.theme.surfaceHigh
         borderColor: root.theme.outlineVariant
-        onClicked: root.state.toast("Network · " + root.state.device.networkLabel)
+        onClicked: root.state.openSettingsPage("network")
     }
 
     TouchButton {

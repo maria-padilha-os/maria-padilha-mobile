@@ -29,6 +29,7 @@ ShellRoot {
     readonly property int targetHeight: root.parsedSize.height
     readonly property bool landscape: root.targetWidth > root.targetHeight
     readonly property bool fullScreen: root.sizeOverride.length === 0 && root.targetScreen !== null
+    readonly property real uiScale: state.settings.displayScale
     // The body ends above the keyboard. Inline fallback height comes from the
     // panel. A compositor keyboard may report a rectangle; if it does not
     // (common for an external Wayland OSK), reserve a conservative fraction
@@ -42,12 +43,13 @@ ShellRoot {
     readonly property real compositorKeyboardInset: {
         if (Quickshell.env("QT_QPA_PLATFORM") === "offscreen")
             return 0;
-        const reported = Math.min(state.externalKeyboardHeight, root.targetHeight * 0.45);
+        const scale = root.uiScale > 0 ? root.uiScale : 1;
+        const reported = Math.min(state.externalKeyboardHeight / scale, root.targetHeight * 0.45);
         if (reported > 0)
             return reported;
         if (!state.keyboardRequested || state.keyboardMode === "inline" || state.keyboardMode === "off")
             return 0;
-        return Math.round(root.targetHeight * root.compositorKeyboardFraction);
+        return Math.round(root.targetHeight * root.compositorKeyboardFraction / scale);
     }
     readonly property real keyboardInset: state.inlineKeyboardActive
         ? keyboard.panelHeight : root.compositorKeyboardInset
@@ -57,6 +59,7 @@ ShellRoot {
         return isNaN(value) ? 1200 : Math.max(200, value);
     }
     readonly property bool selfTest: Quickshell.env("PADILHA_SHELL_SELFTEST") === "1"
+    readonly property bool settingsSelfTest: Quickshell.env("PADILHA_SETTINGS_SELFTEST") === "1"
     readonly property bool telephonySelfTest: Quickshell.env("PADILHA_SHELL_TELEPHONY_SELFTEST") === "1"
 
     Theme {
@@ -79,7 +82,10 @@ ShellRoot {
 
         Item {
             id: surfaceRoot
-            anchors.fill: parent
+            width: parent.width / (root.uiScale > 0 ? root.uiScale : 1)
+            height: parent.height / (root.uiScale > 0 ? root.uiScale : 1)
+            scale: root.uiScale > 0 ? root.uiScale : 1
+            transformOrigin: Item.TopLeft
             focus: true
 
             Rectangle {
@@ -190,6 +196,15 @@ ShellRoot {
                             onClosed: state.openSurface("home")
                         }
 
+                        SettingsSurface {
+                            anchors.fill: parent
+                            visible: !state.locked && state.surface === "settings"
+                            landscape: root.landscape
+                            theme: theme
+                            state: state
+                            onClosed: state.openSurface("home")
+                        }
+
                         LockSurface {
                             anchors.fill: parent
                             visible: state.locked
@@ -251,6 +266,14 @@ ShellRoot {
             state.openSurface("messages");
         }
 
+        function settings() {
+            state.openSettingsPage("index");
+        }
+
+        function settingsPage(page: string) {
+            state.openSettingsPage(page);
+        }
+
         function lock() {
             state.lock();
         }
@@ -277,6 +300,11 @@ ShellRoot {
                 network: state.device.networkLabel,
                 palette: theme.source,
                 mode: theme.mode,
+                settingsPage: state.settingsPage,
+                displayScale: state.settings.displayScale,
+                language: state.settings.language,
+                clockFormat: state.settings.clockFormat,
+                settingsFile: state.settings.configPath,
                 keyboardMode: state.keyboardMode,
                 keyboardVisible: state.inlineKeyboardActive,
                 keyboardPurpose: state.keyboardPurpose,
@@ -338,8 +366,30 @@ ShellRoot {
     }
 
     Timer {
+        id: settingsSelfTestWriteTimer
+        interval: 500
+        running: root.settingsSelfTest
+        onTriggered: {
+            const settings = state.settings;
+            if (settings.configEnabled && !settings.configReady) {
+                restart();
+                return;
+            }
+            settings.setDisplayScale(1.1);
+            settings.setBrightness(0.37);
+            settings.setVolume(0.42);
+            settings.setMuted(true);
+            settings.setLanguage("pt-BR");
+            settings.setClockFormat("TwentyFourHour");
+            settings.setBatteryCriticalLevel(15);
+            settings.setChargingNotifications(false);
+            settings.setWifiEnabled(false);
+        }
+    }
+
+    Timer {
         id: selfTestTimer
-        interval: 1000
+        interval: root.settingsSelfTest ? 2400 : 1000
         running: root.selfTest
         onTriggered: {
             console.log("PADILHA_SHELL_SELFTEST_DETAIL",
@@ -367,6 +417,62 @@ ShellRoot {
             const urlRows = state.keyboardLayouts.rowsFor("url", "base").join(" ");
             const passwordRows = state.keyboardLayouts.rowsFor("password", "base").join(" ");
             const keyboardAvoidanceOk = root.compositorKeyboardFraction > 0;
+
+            const originalSurface = state.surface;
+            const originalPage = state.settingsPage;
+            let settingsNavigationOk = true;
+            for (const page of ["network", "display", "sound", "battery", "language", "about"]) {
+                state.openSettingsPage(page);
+                if (state.surface !== "settings" || state.settingsPage !== page)
+                    settingsNavigationOk = false;
+            }
+            state.openSettingsPage("not-a-page");
+            if (state.settingsPage !== "index")
+                settingsNavigationOk = false;
+            state.openSurface(originalSurface);
+            state.settingsPage = originalPage;
+
+            const settings = state.settings;
+            const settingsValidationOk =
+                settings.normalizeDisplayScale(9) === 1.2 &&
+                settings.normalizeDisplayScale(-1) === 1.0 &&
+                settings.normalizeLevel(2) === 1 &&
+                settings.normalizeLevel(-1) === 0 &&
+                settings.normalizeBatteryCriticalLevel(99) === 20 &&
+                settings.normalizeBatteryCriticalLevel(0) === 1 &&
+                settings.normalizeLanguage("pt-BR") === "pt-BR" &&
+                settings.normalizeLanguage("xx") === "" &&
+                settings.normalizeClockFormat("TwentyFourHour") === "TwentyFourHour" &&
+                settings.normalizeClockFormat("nope") === "Auto";
+            const settingsPagesOk = settings.supportedLanguages.length >= 2 &&
+                settings.supportedClockFormats.length >= 2 &&
+                settings.displayScaleOptions.length >= 3 &&
+                ["index", "network", "display", "sound", "battery", "language", "about"]
+                    .every(page => state.settingsPages.includes(page));
+            const settingsTouchFloorOk = settings.displayScaleOptions
+                .every(value => value >= 1.0);
+            const settingsFileOk = settings.configPath.endsWith("/shell.json") ||
+                settings.configPath.endsWith("shell.json");
+            const networkUntouchedOk = settings.demo && settings.networkWriteCount === 0;
+
+            let settingsPersistenceOk = true;
+            if (root.settingsSelfTest) {
+                let saved = null;
+                try {
+                    saved = JSON.parse(settings.lastSavedText || "{}");
+                } catch (error) {
+                    saved = null;
+                }
+                settingsPersistenceOk = settings.saveCount > 0 && saved !== null &&
+                    saved.appearance && saved.appearance.font &&
+                    saved.appearance.font.scale === 1.1 &&
+                    saved.general && saved.general.language === "pt-BR" &&
+                    saved.general.battery && saved.general.battery.criticalLevel === 15 &&
+                    saved.services && saved.services.clockFormat === "TwentyFourHour" &&
+                    saved.utilities && saved.utilities.toasts &&
+                    saved.utilities.toasts.chargingChanged === false;
+            }
+
             const checks = [
                 ["theme-ready", theme.ready],
                 ["surface-text", theme.contrastRatio(theme.text, theme.surface) >= 4.5],
@@ -390,6 +496,16 @@ ShellRoot {
                 ["keyboard-url", urlRows.includes("/") && urlRows.includes(":")],
                 ["keyboard-password", passwordRows.includes("1") && passwordRows.includes("BackSpace")],
                 ["keyboard-avoidance", keyboardAvoidanceOk],
+                ["settings-navigation", settingsNavigationOk],
+                ["settings-validation", settingsValidationOk],
+                ["settings-pages", settingsPagesOk],
+                ["settings-touch-floor", settingsTouchFloorOk],
+                ["settings-config-path", settingsFileOk],
+                ["settings-network-untouched", networkUntouchedOk],
+                ["settings-persistence", settingsPersistenceOk],
+                ["settings-scale-valid", settings.displayScaleOptions.includes(settings.displayScale)],
+                ["settings-scale-applied", !root.settingsSelfTest ||
+                    Math.abs(root.uiScale - 1.1) < 0.001],
                 ["telephony-state", state.telephony.state.length > 0],
                 ["telephony-demo", state.telephony.demo === true],
                 ["telephony-modem", state.telephony.modemPresent === true],

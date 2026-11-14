@@ -20,6 +20,7 @@ the implementation and records the scope.
 | Notifications | `surfaces/NotificationsSurface.qml` | live `NotificationServer` list, demo cards, dismiss and clear |
 | Calls | `surfaces/CallsSurface.qml`, `components/CallCard.qml`, `components/DialPad.qml` | ModemManager Voice calls, dial/incoming/active states, graceful no-modem states |
 | Messages | `surfaces/MessagesSurface.qml`, `components/SmsCard.qml` | ModemManager Messaging list, reply/send/delete, in-memory only |
+| Settings | `surfaces/SettingsSurface.qml`, `settings/` | Network, Display, Sound, Battery, Language and About pages with touch rows |
 | Lock | `surfaces/LockSurface.qml` | clock, privacy-safe notification count, PIN dots, large keypad |
 | Navigation | `components/NavBar.qml`, `components/SideRail.qml` | bottom bar in portrait, side rail in landscape |
 | Keyboard fallback | `components/KeyboardPanel.qml`, `components/KeyboardKey.qml`, `components/KeyboardLayouts.qml` | optional in-shell panel for the shell's own text fields |
@@ -83,6 +84,31 @@ path and `tests/shell/palette_check.py` mirrors the guard outside QML.
 All icons are drawn by `components/Icon.qml` with Qt Canvas. There is no icon
 font dependency, which keeps the shell usable in a minimal QEMU guest.
 
+## Settings
+
+`surfaces/SettingsSurface.qml` hosts the touch settings pages. Portrait shows
+six large category cards or one full-width page; landscape adds a persistent
+category rail. The page rows are mobile ports of the desktop Nexus common rows
+(`PageBase`, `SectionHeader`, `ToggleRow`, `SliderRow`, `SelectRow`, `InfoRow`,
+`RowButton`, `StepperRow`) and keep the same grouped-card interaction language
+without importing the desktop `Caelestia.Config` plugin.
+
+`components/SettingsStore.qml` validates every value and persists preferences
+to the existing `$PADILHA_CONFIG_DIR/shell.json` (normally
+`~/.config/padilha/shell.json`). It uses `appearance.font.scale`,
+`general.language`, `services.clockFormat`, `general.battery.criticalLevel` and
+`utilities.toasts.chargingChanged`. Writes are atomic and preserve unknown
+keys. Brightness, audio volume/mute and Wi-Fi stay with the backlight subsystem,
+PipeWire/WirePlumber and NetworkManager; charge thresholds stay with the image
+helper. See [`docs/settings.md`](../docs/settings.md).
+
+The interface scale is applied to the shell surface itself, so changing it
+rescales the status bar, navigation and pages rather than only a preview. Only
+upscaling (100%, 110%, 120%) is offered so the 48 px touch floor is never
+reduced. Demo mode uses deterministic network, battery and about-page data and
+never writes to a device or radio; the self-test asserts the NetworkManager
+write counter did not change.
+
 ## Responsive rules
 
 - 720x1280 portrait: bottom navigation, four-column app grid, stacked clock and
@@ -91,7 +117,7 @@ font dependency, which keeps the shell usable in a minimal QEMU guest.
   actions side by side, 54 px keypad in a two-column lock layout, notification
   cards capped at 820 px.
 - Actionable controls are at least 48 px; navigation is 72 px, quick actions are
-  76-84 px and app tiles are 68-86 px.
+  76-84 px, app tiles are 68-86 px and settings rows are 60-78 px.
 - `PADILHA_SHELL_SIZE=WxH` forces a windowed size for testing.
 - The shell body gets a bottom inset from `KeyboardPanel.qml` in inline mode,
   or from `InputMethod.keyboardRectangle` when Squeekboard is open, so the
@@ -129,7 +155,11 @@ and uses a shorter key row in landscape.
 - Tap the launcher search field to focus it. In compositor mode Squeekboard
   opens; with `PADILHA_SHELL_OSK=inline` the fallback panel opens. Tap the
   down-arrow key or outside the field to hide it.
-- `qs ipc call padilha-shell <home|launcher|notifications|lock|unlock|demoNotification|status>`
+- Open Settings from the launcher, the pinned grid, the Network quick action or
+  `qs ipc call padilha-shell settings`. Use the category cards/rail or
+  `settingsPage <page>` to switch pages; the back target returns to the
+  overview or Home.
+- `qs ipc call padilha-shell <home|launcher|notifications|calls|messages|settings|lock|unlock|demoNotification|status>`
   drives the running shell.
 
 ## Test hooks
@@ -139,9 +169,15 @@ These variables exist for reproducible screenshots and tests:
 | Variable | Effect |
 | --- | --- |
 | `PADILHA_SCHEME` | palette state file to read |
-| `PADILHA_SHELL_DEMO=1` | deterministic demo apps, notifications, 82% battery, Wi-Fi |
+| `PADILHA_SHELL_DEMO=1` | deterministic demo apps, notifications, 82% battery, Wi-Fi, network list and about data |
 | `PADILHA_SHELL_SIZE=WxH` | force the window size |
-| `PADILHA_SHELL_SURFACE=home\|launcher\|notifications\|lock` | initial surface |
+| `PADILHA_SHELL_SURFACE=home\|launcher\|notifications\|calls\|messages\|settings\|lock` | initial surface |
+| `PADILHA_SHELL_SETTINGS_PAGE=index\|network\|display\|sound\|battery\|language\|about` | initial settings page |
+| `PADILHA_CONFIG_DIR` | existing Padilha config directory |
+| `PADILHA_SETTINGS_CONFIG` | explicit `shell.json` path for persistence tests |
+| `PADILHA_SETTINGS_WRITE=1` | allow writes in demo mode |
+| `PADILHA_SETTINGS_SELFTEST=1` | run settings validation, navigation and temp-config persistence checks |
+| `PADILHA_SETTINGS_CAPTURE=1` | call `padilha-config capture` after a save |
 | `PADILHA_SHELL_QUERY` | pre-fill the launcher search |
 | `PADILHA_SHELL_PIN` | pre-fill the prototype PIN dots |
 | `PADILHA_SHELL_GRAB=/path.png` | render the shell to a PNG and exit |
@@ -160,17 +196,18 @@ These variables exist for reproducible screenshots and tests:
 ## Verification
 
 ```sh
-make test            # repository checks, including keyboard, modem and shell tests
+make test            # repository checks, including keyboard, modem, settings and shell tests
 tests/keyboard.sh    # Squeekboard config/layouts/privacy and installer checks
 tests/modem.sh       # ModemManager policy, no-modem daemon, emulated call/SMS flow
+tests/settings.sh    # settings policy, navigation/validation/persistence and page renders
 tests/shell.sh       # palette, contrast, qmllint, self-test, telephony renders
 ```
 
 The offscreen render path sets `QT_QPA_PLATFORM=offscreen` and
 `QSG_RHI_BACKEND=software`. It captures only the shell's own item tree, so no
 private window or terminal is part of a screenshot. On a machine without
-Quickshell the visual part of `tests/shell.sh` is skipped; the palette checks
-still run.
+Quickshell the visual part of `tests/shell.sh` and `tests/settings.sh` is
+skipped; the palette and static checks still run.
 
 ## Out of scope
 

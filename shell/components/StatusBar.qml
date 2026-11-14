@@ -14,6 +14,18 @@ Item {
 
     implicitHeight: landscape ? 56 : 64
 
+    readonly property string localeName: root.state.settings.language.length > 0
+        ? root.state.settings.language : Qt.locale().name
+    readonly property var locale: Qt.locale(root.localeName)
+    readonly property string timePattern: {
+        const requested = root.state.settings.clockFormat;
+        if (requested === "TwelveHour")
+            return "h:mm AP";
+        if (requested === "TwentyFourHour")
+            return "HH:mm";
+        return root.locale.timeFormat(Locale.ShortFormat).indexOf("AP") >= 0 ? "h:mm AP" : "HH:mm";
+    }
+
     SystemClock {
         id: clock
         precision: SystemClock.Minutes
@@ -42,7 +54,7 @@ Item {
             Layout.alignment: Qt.AlignVCenter
             spacing: 0
             Text {
-                text: Qt.formatTime(clock.date, "HH:mm")
+                text: Qt.formatTime(clock.date, root.timePattern)
                 color: root.theme.text
                 font.pixelSize: root.landscape ? 23 : 25
                 font.weight: Font.DemiBold

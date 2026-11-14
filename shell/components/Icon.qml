@@ -218,6 +218,37 @@ Item {
                     ctx.lineTo(12 + Math.cos(angle) * 8.6, 12 + Math.sin(angle) * 8.6);
                     ctx.stroke();
                 }
+            } else if (root.name === "clock") {
+                ctx.beginPath();
+                ctx.arc(12, 12, 8.2, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(12, 7);
+                ctx.lineTo(12, 12);
+                ctx.lineTo(15.8, 14.2);
+                ctx.stroke();
+            } else if (root.name === "globe" || root.name === "language") {
+                ctx.beginPath();
+                ctx.arc(12, 12, 8.2, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(3.8, 12);
+                ctx.lineTo(20.2, 12);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.ellipse(12, 12, 4.1, 8.2, 0, 0, Math.PI * 2);
+                ctx.stroke();
+            } else if (root.name === "info") {
+                ctx.beginPath();
+                ctx.arc(12, 12, 8.2, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(12, 10.5);
+                ctx.lineTo(12, 17);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(12, 7.2, 1.1, 0, Math.PI * 2);
+                ctx.fill();
             } else if (root.name === "home") {
                 ctx.beginPath();
                 ctx.moveTo(3.5, 11);

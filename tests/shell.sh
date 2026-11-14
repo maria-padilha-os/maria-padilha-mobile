@@ -163,7 +163,7 @@ shot() {
 log "== responsive renders =="
 light="$ROOT/shell/palettes/padilha-light.json"
 dark="$ROOT/tests/shell/fixtures/padilha-dark.json"
-for surface in home launcher notifications lock calls messages; do
+for surface in home launcher notifications lock calls messages settings; do
   pin=""
   [ "$surface" = "lock" ] && pin=1234
   minimum=8
@@ -173,6 +173,7 @@ for surface in home launcher notifications lock calls messages; do
 done
 shot "home-720x1280-dark" 720x1280 home "$dark"
 shot "home-1280x720-dark" 1280x720 home "$dark"
+shot "settings-720x1280-dark" 720x1280 settings "$dark"
 
 log "== no-modem telephony renders =="
 for surface in calls messages; do
