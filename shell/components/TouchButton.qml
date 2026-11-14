@@ -1,5 +1,6 @@
-// Touch-first button: 48 px minimum target, 56–72 px in the shell, with a
-// pressed-state scale and optional icon + label.
+// Touch-first button: a theme-enforced minimum target (48px by default),
+// scalable label text and optional icon + label. Keyboard focus uses the same
+// path as touch so Space/Enter activate the control.
 
 import QtQuick
 import QtQuick.Layouts
@@ -7,8 +8,10 @@ import QtQuick.Layouts
 Item {
     id: root
 
+    required property Theme theme
     property string icon: ""
     property string label: ""
+    property string accessibleName: ""
     property color foreground: "#201a18"
     property color background: "transparent"
     property color borderColor: "transparent"
@@ -25,17 +28,27 @@ Item {
     signal clicked()
     signal longPressed()
 
-    readonly property real _textWidth: label.length > 0 ? label.length * labelSize * 0.58 + 8 : 0
+    readonly property bool hasLabel: label.length > 0
+    readonly property int scaledLabelSize: root.theme.scaledFont(root.labelSize)
+    readonly property real _textWidth: hasLabel ? label.length * scaledLabelSize * 0.58 + 8 : 0
     implicitWidth: vertical
-        ? Math.max(48, Math.max(iconSize, _textWidth) + horizontalPadding * 2)
-        : Math.max(48, iconSize + _textWidth + horizontalPadding * 2)
-    implicitHeight: vertical ? iconSize + (label.length > 0 ? labelSize + 8 : 0) + verticalPadding * 2 : 48
+        ? Math.max(root.theme.minTouchTarget, Math.max(iconSize, _textWidth) + horizontalPadding * 2)
+        : Math.max(root.theme.minTouchTarget, iconSize + _textWidth + horizontalPadding * 2)
+    implicitHeight: Math.max(root.theme.minTouchTarget,
+        vertical ? iconSize + (hasLabel ? scaledLabelSize + 8 : 0) + verticalPadding * 2
+                 : Math.max(iconSize, scaledLabelSize) + verticalPadding * 2)
     opacity: enabled ? 1.0 : 0.45
     scale: tap.pressed ? 0.96 : 1.0
+    objectName: "padilha-touch-target"
+    activeFocusOnTab: enabled
 
     Accessible.role: Accessible.Button
-    Accessible.name: label.length > 0 ? label : icon
+    Accessible.name: accessibleName.length > 0 ? accessibleName : (hasLabel ? label : icon)
     Accessible.onPressAction: if (enabled) root.clicked()
+
+    Keys.onReturnPressed: if (root.enabled) root.clicked()
+    Keys.onEnterPressed: if (root.enabled) root.clicked()
+    Keys.onSpacePressed: if (root.enabled) root.clicked()
 
     Behavior on scale {
         NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
@@ -45,8 +58,8 @@ Item {
         anchors.fill: parent
         radius: root.radius
         color: root.active ? root.activeBackground : root.background
-        border.width: root.borderColor.a > 0 ? 1 : 0
-        border.color: root.borderColor
+        border.width: root.activeFocus ? 2 : (root.borderColor.a > 0 ? 1 : 0)
+        border.color: root.activeFocus ? root.theme.accent : root.borderColor
     }
 
     Loader {
@@ -67,10 +80,10 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
             }
             Text {
-                visible: root.label.length > 0
+                visible: root.hasLabel
                 text: root.label
                 color: root.active ? root.activeForeground : root.foreground
-                font.pixelSize: root.labelSize
+                font.pixelSize: root.theme.scaledFont(root.labelSize)
                 font.weight: Font.Medium
                 anchors.horizontalCenter: parent.horizontalCenter
             }
@@ -90,10 +103,10 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
             }
             Text {
-                visible: root.label.length > 0
+                visible: root.hasLabel
                 text: root.label
                 color: root.active ? root.activeForeground : root.foreground
-                font.pixelSize: root.labelSize
+                font.pixelSize: root.theme.scaledFont(root.labelSize)
                 anchors.verticalCenter: parent.verticalCenter
             }
         }

@@ -55,11 +55,12 @@ Item {
                     Text {
                         text: "Pinned"
                         color: root.theme.text
-                        font.pixelSize: 17
+                        font.pixelSize: root.theme.scaledFont(17)
                         font.weight: Font.DemiBold
                     }
                     Item { Layout.fillWidth: true }
                     TouchButton {
+                        theme: root.theme
                         icon: "apps"
                         label: "All apps"
                         vertical: false
@@ -86,7 +87,8 @@ Item {
                             tone: index
                             tileSize: root.landscape ? 64 : 68
                             Layout.fillWidth: true
-                            Layout.preferredHeight: (root.landscape ? 64 : 68) + 30
+                            Layout.preferredHeight: (root.landscape ? 64 : 68)
+                                + root.theme.scaledFont(12) + 18
                             onClicked: root.state.launch(root.state.apps[index])
                         }
                     }

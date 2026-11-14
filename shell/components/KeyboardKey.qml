@@ -16,9 +16,10 @@ Item {
     readonly property string label: info && info.label !== undefined ? info.label : token
     readonly property bool special: info && info.outline !== undefined && info.outline !== "default"
 
-    implicitWidth: 48
-    implicitHeight: 48
+    implicitWidth: root.theme.minTouchTarget
+    implicitHeight: root.theme.minTouchTarget
     scale: tap.pressed ? 0.95 : 1.0
+    objectName: "padilha-touch-target"
 
     Accessible.role: Accessible.Button
     Accessible.name: root.label
@@ -38,7 +39,7 @@ Item {
             width: parent.width - 8
             text: root.label
             color: root.active ? root.theme.primaryText : root.theme.highText
-            font.pixelSize: root.label.length > 2 ? 13 : 18
+            font.pixelSize: root.theme.scaledFont(root.label.length > 2 ? 13 : 18)
             font.weight: Font.Medium
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter

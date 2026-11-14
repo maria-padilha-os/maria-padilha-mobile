@@ -59,14 +59,14 @@ Item {
                     Text {
                         text: "Maria Padilha"
                         color: root.theme.accent
-                        font.pixelSize: 13
+                        font.pixelSize: root.theme.scaledFont(13)
                         font.letterSpacing: 1.1
                         font.weight: Font.Medium
                     }
                     Text {
                         text: "Locked"
                         color: root.theme.textMuted
-                        font.pixelSize: 12
+                        font.pixelSize: root.theme.scaledFont(12)
                     }
                 }
 
@@ -103,7 +103,7 @@ Item {
                 Layout.fillWidth: true
                 text: "Prototype lock · any four digits unlock"
                 color: root.theme.textMuted
-                font.pixelSize: 12
+                font.pixelSize: root.theme.scaledFont(12)
                 horizontalAlignment: Text.AlignHCenter
             }
 
@@ -115,6 +115,7 @@ Item {
             }
 
             TouchButton {
+                theme: root.theme
                 Layout.fillWidth: true
                 Layout.preferredHeight: 58
                 icon: "unlock"
@@ -166,14 +167,14 @@ Item {
                         Text {
                             text: "Maria Padilha"
                             color: root.theme.accent
-                            font.pixelSize: 13
+                            font.pixelSize: root.theme.scaledFont(13)
                             font.letterSpacing: 1.1
                             font.weight: Font.Medium
                         }
                         Text {
                             text: "Locked"
                             color: root.theme.textMuted
-                            font.pixelSize: 12
+                            font.pixelSize: root.theme.scaledFont(12)
                         }
                     }
                     LockStatusPill {
@@ -214,7 +215,7 @@ Item {
                     Layout.fillWidth: true
                     text: "Prototype lock · any four digits unlock"
                     color: root.theme.textMuted
-                    font.pixelSize: 12
+                    font.pixelSize: root.theme.scaledFont(12)
                     horizontalAlignment: Text.AlignHCenter
                 }
 
@@ -227,6 +228,7 @@ Item {
                 }
 
                 TouchButton {
+                    theme: root.theme
                     Layout.fillWidth: true
                     Layout.preferredHeight: 56
                     icon: "unlock"

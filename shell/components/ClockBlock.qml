@@ -28,7 +28,7 @@ Item {
             width: parent.width
             text: Qt.formatTime(clock.date, "HH:mm")
             color: root.theme.text
-            font.pixelSize: root.timeSize
+            font.pixelSize: root.theme.scaledFont(root.timeSize)
             font.weight: Font.Light
             horizontalAlignment: root.centered ? Text.AlignHCenter : Text.AlignLeft
         }
@@ -36,7 +36,7 @@ Item {
             width: parent.width
             text: Qt.formatDate(clock.date, "dddd d MMMM")
             color: root.theme.textMuted
-            font.pixelSize: Math.max(14, Math.round(root.timeSize * 0.19))
+            font.pixelSize: root.theme.scaledFont(Math.max(14, Math.round(root.timeSize * 0.19)))
             horizontalAlignment: root.centered ? Text.AlignHCenter : Text.AlignLeft
         }
         Text {
@@ -44,7 +44,7 @@ Item {
             width: parent.width
             text: "Maria Padilha"
             color: root.theme.accent
-            font.pixelSize: Math.max(11, Math.round(root.timeSize * 0.13))
+            font.pixelSize: root.theme.scaledFont(Math.max(11, Math.round(root.timeSize * 0.13)))
             font.letterSpacing: 1.2
             font.weight: Font.Medium
             horizontalAlignment: root.centered ? Text.AlignHCenter : Text.AlignLeft

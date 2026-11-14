@@ -65,7 +65,9 @@ Item {
                 spacing: 10
 
                 TouchButton {
+                    theme: root.theme
                     icon: "back"
+                    accessibleName: "Back"
                     vertical: false
                     iconSize: 22
                     background: root.theme.surfaceHigh
@@ -82,20 +84,22 @@ Item {
                     Text {
                         text: "Calls"
                         color: root.theme.text
-                        font.pixelSize: 24
+                        font.pixelSize: root.theme.scaledFont(24)
                         font.weight: Font.DemiBold
                     }
                     Text {
                         text: root.telephony.statusLabel
                         color: root.theme.textMuted
-                        font.pixelSize: 12
+                        font.pixelSize: root.theme.scaledFont(12)
                         elide: Text.ElideRight
                         width: parent.width
                     }
                 }
 
                 TouchButton {
+                    theme: root.theme
                     icon: "arrow_up"
+                    accessibleName: "Refresh calls"
                     vertical: false
                     iconSize: 20
                     background: root.theme.surfaceHigh
@@ -150,14 +154,16 @@ Item {
                             Layout.fillWidth: true
                             text: root.dialNumber.length > 0 ? root.dialNumber : "Enter a number"
                             color: root.dialNumber.length > 0 ? root.theme.highText : root.theme.highMuted
-                            font.pixelSize: 28
+                            font.pixelSize: root.theme.scaledFont(28)
                             font.weight: Font.Medium
                             elide: Text.ElideRight
                         }
 
                         TouchButton {
+                            theme: root.theme
                             visible: root.dialNumber.length > 0
                             icon: "backspace"
+                            accessibleName: "Delete digit"
                             iconSize: 22
                             implicitWidth: 52
                             implicitHeight: 52
@@ -177,6 +183,7 @@ Item {
                 }
 
                 TouchButton {
+                    theme: root.theme
                     Layout.fillWidth: true
                     Layout.preferredHeight: 60
                     icon: "phone"
@@ -196,7 +203,7 @@ Item {
                     visible: root.telephony.emergencyOnly
                     text: "Emergency calls are not supported by this prototype."
                     color: root.theme.danger
-                    font.pixelSize: 12
+                    font.pixelSize: root.theme.scaledFont(12)
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.Wrap
                 }

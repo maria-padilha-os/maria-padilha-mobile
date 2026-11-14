@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Shell prototype checks.
 #
-# Always runs the palette/contrast checks. When Quickshell is available it also
-# lints the QML, runs the shell self-test against the existing/bundled colour
-# state, and renders the four surfaces at both reference resolutions through
-# Qt's offscreen platform. No compositor, private window or terminal is captured.
+# Always runs the palette, contrast and accessibility checks. When Quickshell
+# is available it also lints the QML, runs the shell self-test against the
+# existing/bundled colour state, exercises font scaling and touch targets, and
+# renders the surfaces at both reference resolutions through Qt's offscreen
+# platform. No compositor, private window or terminal is captured.
 
 set -euo pipefail
 
@@ -21,6 +22,16 @@ if python3 tests/shell/palette_check.py; then
   ok "palette fixtures and contrast guard"
 else
   bad "palette fixtures or contrast guard"
+fi
+if python3 tests/shell/contrast_check.py; then
+  ok "generated theme role contrast"
+else
+  bad "generated theme role contrast"
+fi
+if python3 tests/shell/accessibility_check.py; then
+  ok "accessibility tokens and manual checklist"
+else
+  bad "accessibility tokens or manual checklist"
 fi
 
 if ! command -v quickshell >/dev/null 2>&1; then
@@ -61,14 +72,20 @@ else
 fi
 
 run_selftest() {
-  local label=$1 scheme=$2
+  local label=$1 scheme=$2 font_scale=${3:-1.0} osk=${4:-compositor}
   local out="$tmp/selftest-$label.log"
+  local extra_env=()
+  if [ "$osk" = "inline" ]; then
+    extra_env+=(PADILHA_SHELL_OSK=inline PADILHA_SHELL_KEYBOARD=1 PADILHA_SHELL_SURFACE=launcher)
+  fi
   mkdir -p "$tmp/run-$label"
   chmod 700 "$tmp/run-$label"
   set +e
-  QT_QPA_PLATFORM=offscreen QSG_RHI_BACKEND=software \
+  env "${extra_env[@]}" \
+    QT_QPA_PLATFORM=offscreen QSG_RHI_BACKEND=software \
     XDG_RUNTIME_DIR="$tmp/run-$label" \
     PADILHA_SHELL_DEMO=1 PADILHA_SHELL_SELFTEST=1 PADILHA_SCHEME="$scheme" \
+    PADILHA_SHELL_FONT_SCALE="$font_scale" \
     timeout 45s quickshell -p "$ROOT/shell" --no-color >"$out" 2>&1
   local rc=$?
   set -e
@@ -90,6 +107,8 @@ fi
 run_selftest bundled "$ROOT/shell/palettes/padilha-light.json"
 run_selftest guarded-broken "$ROOT/tests/shell/fixtures/broken-light.json"
 run_selftest fallback-missing "$tmp/does-not-exist/scheme.json"
+run_selftest font-scale-150 "$ROOT/shell/palettes/padilha-light.json" 1.5
+run_selftest keyboard-targets "$ROOT/shell/palettes/padilha-light.json" 1.0 inline
 
 privacy_selftest() {
   local secret="padilha-typed-text-${RANDOM}-$$"
@@ -123,6 +142,7 @@ privacy_selftest
 shot() {
   local label=$1 size=$2 surface=$3 scheme=$4 pin=${5:-} osk=${6:-} purpose=${7:-}
   local telephony_demo=${8:-} telephony_backend=${9:-} min_colours=${10:-8}
+  local font_scale=${11:-1.0}
   local image="$tmp/$label.png"
   local out="$tmp/$label.log"
   local width=${size%x*}
@@ -135,6 +155,7 @@ shot() {
     XDG_RUNTIME_DIR="$tmp/run-$label" \
     PADILHA_SHELL_DEMO=1 PADILHA_SHELL_SIZE="$size" PADILHA_SHELL_SURFACE="$surface" \
     PADILHA_SHELL_PIN="$pin" PADILHA_SCHEME="$scheme" PADILHA_SHELL_GRAB="$image" \
+    PADILHA_SHELL_FONT_SCALE="$font_scale" \
     PADILHA_SHELL_OSK="$osk" PADILHA_SHELL_KEYBOARD="${osk:+1}" \
     PADILHA_SHELL_KEYBOARD_PURPOSE="$purpose" \
     PADILHA_TELEPHONY_DEMO="$telephony_demo" \
@@ -174,6 +195,8 @@ done
 shot "home-720x1280-dark" 720x1280 home "$dark"
 shot "home-1280x720-dark" 1280x720 home "$dark"
 shot "settings-720x1280-dark" 720x1280 settings "$dark"
+shot "home-720x1280-font-150" 720x1280 home "$light" "" "" "" "" "" 8 1.5
+shot "home-720x1280-font-200" 720x1280 home "$light" "" "" "" "" "" 8 2.0
 
 log "== no-modem telephony renders =="
 for surface in calls messages; do

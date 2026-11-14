@@ -51,7 +51,9 @@ Item {
             spacing: 10
 
             TouchButton {
+                theme: root.theme
                 icon: "back"
+                accessibleName: "Back"
                 vertical: false
                 iconSize: 22
                 background: root.theme.surfaceHigh
@@ -68,20 +70,22 @@ Item {
                 Text {
                     text: "Messages"
                     color: root.theme.text
-                    font.pixelSize: 24
+                    font.pixelSize: root.theme.scaledFont(24)
                     font.weight: Font.DemiBold
                 }
                 Text {
                     text: root.telephony.statusLabel
                     color: root.theme.textMuted
-                    font.pixelSize: 12
+                    font.pixelSize: root.theme.scaledFont(12)
                     elide: Text.ElideRight
                     width: parent.width
                 }
             }
 
             TouchButton {
+                theme: root.theme
                 icon: "arrow_up"
+                accessibleName: "Refresh messages"
                 vertical: false
                 iconSize: 20
                 background: root.theme.surfaceHigh
@@ -138,14 +142,14 @@ Item {
                 Text {
                     text: "No messages"
                     color: root.theme.text
-                    font.pixelSize: 18
+                    font.pixelSize: root.theme.scaledFont(18)
                     font.weight: Font.Medium
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
                 Text {
                     text: "Received SMS will appear here."
                     color: root.theme.textMuted
-                    font.pixelSize: 13
+                    font.pixelSize: root.theme.scaledFont(13)
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
             }
@@ -193,7 +197,7 @@ Item {
                         Text {
                             text: "To"
                             color: root.theme.textMuted
-                            font.pixelSize: 12
+                            font.pixelSize: root.theme.scaledFont(12)
                             font.weight: Font.Medium
                         }
                         TextInput {
@@ -204,7 +208,7 @@ Item {
                             color: root.theme.highText
                             selectionColor: root.theme.primaryContainer
                             selectedTextColor: root.theme.primaryContainerText
-                            font.pixelSize: 15
+                            font.pixelSize: root.theme.scaledFont(15)
                             inputMethodHints: Qt.ImhDialableCharactersOnly | Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
                             onTextChanged: root.recipient = text
                             onActiveFocusChanged: {
@@ -238,7 +242,7 @@ Item {
                             color: root.theme.highText
                             selectionColor: root.theme.primaryContainer
                             selectedTextColor: root.theme.primaryContainerText
-                            font.pixelSize: 15
+                            font.pixelSize: root.theme.scaledFont(15)
                             inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
                             onTextChanged: root.body = text
                             onActiveFocusChanged: {
@@ -253,7 +257,9 @@ Item {
                     }
 
                     TouchButton {
+                        theme: root.theme
                         icon: "send"
+                        accessibleName: "Send message"
                         iconSize: 19
                         implicitWidth: 50
                         implicitHeight: 50

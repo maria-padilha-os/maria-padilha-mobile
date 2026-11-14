@@ -9,7 +9,8 @@ GridLayout {
 
     required property Theme theme
     property bool landscape: false
-    property int keyHeight: landscape ? 54 : 62
+    property int keyHeight: root.theme.touchTarget(Math.max(landscape ? 54 : 62,
+        root.theme.scaledFont(23) + 16))
     signal digitPressed(string digit)
 
     columns: 3
@@ -21,6 +22,7 @@ GridLayout {
 
         delegate: TouchButton {
             required property string modelData
+            theme: root.theme
             Layout.fillWidth: true
             Layout.preferredHeight: root.keyHeight
             label: modelData

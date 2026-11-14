@@ -16,10 +16,12 @@ REQUIRED = [
     "outlineVariant",
 ]
 
-# Mirrors Theme.bestOn(): a preferred colour is accepted at the requested
-# ratio, otherwise the shell chooses a high-contrast neutral.
+# Mirrors Theme.bestOnAll(): a preferred colour is accepted at the requested
+# ratio, otherwise the shell tries warm neutrals and then pure black/white.
 NEUTRAL_DARK = "#130f0e"
 NEUTRAL_LIGHT = "#fcf7f5"
+HARD_DARK = "#000000"
+HARD_LIGHT = "#ffffff"
 
 
 def channel(value: float) -> float:
@@ -40,7 +42,10 @@ def ratio(a: str, b: str) -> float:
 def guarded(bg: str, preferred: str, minimum: float = 4.5) -> str:
     if ratio(preferred, bg) >= minimum:
         return preferred
-    return NEUTRAL_DARK if ratio(NEUTRAL_DARK, bg) >= ratio(NEUTRAL_LIGHT, bg) else NEUTRAL_LIGHT
+    soft = NEUTRAL_DARK if ratio(NEUTRAL_DARK, bg) >= ratio(NEUTRAL_LIGHT, bg) else NEUTRAL_LIGHT
+    if ratio(soft, bg) >= minimum:
+        return soft
+    return HARD_DARK if ratio(HARD_DARK, bg) >= ratio(HARD_LIGHT, bg) else HARD_LIGHT
 
 
 def load(path: Path) -> dict:

@@ -75,11 +75,15 @@ The file is watched for atomic rewrites, so changing the desktop palette
 updates the shell without a restart. Both `mode: "light"` and `mode: "dark"`
 are supported.
 
-Every foreground is passed through `bestOn()` with a WCAG contrast target. If
-the generated scheme has, for example, a near-white `onSurface` on a near-white
-`surface`, the shell chooses a high-contrast neutral instead of painting light
-text on a light surface. `tests/shell/fixtures/broken-light.json` exercises that
-path and `tests/shell/palette_check.py` mirrors the guard outside QML.
+Every foreground is resolved through `bestOn()`/`bestOnAll()` with a WCAG
+contrast target. If the generated scheme has, for example, a near-white
+`onSurface` on a near-white `surface`, the shell chooses a high-contrast neutral
+instead of painting light text on a light surface. Multi-surface roles are
+checked against every background they can be drawn on. `tests/shell/fixtures/broken-light.json`
+exercises that path, `tests/shell/palette_check.py` mirrors the guard outside
+QML, and `tests/shell/contrast_check.py` checks every resolved light/dark role
+pair at 4.5:1 text / 3:1 non-text. The self-test walks the same role list at
+runtime.
 
 All icons are drawn by `components/Icon.qml` with Qt Canvas. There is no icon
 font dependency, which keeps the shell usable in a minimal QEMU guest.
@@ -109,6 +113,23 @@ reduced. Demo mode uses deterministic network, battery and about-page data and
 never writes to a device or radio; the self-test asserts the NetworkManager
 write counter did not change.
 
+## Accessibility
+
+- All text and text inputs go through `Theme.scaledFont()`. Set
+  `PADILHA_SHELL_FONT_SCALE` from `0.8` to `2.0` (default `1.0`) to scale the
+  shell's type.
+- Interactive components use `Theme.minTouchTarget` (48 px by default).
+  `PADILHA_SHELL_TOUCH_TARGET` can raise it to 96 but cannot lower it.
+- `TouchButton`, app tiles, notification cards, lock preview and the toast are
+  keyboard focusable: Tab/Shift+Tab moves the focus ring and Space/Enter
+  activates. Icon-only controls have explicit accessible names.
+- The runtime self-test fails if a visible target is smaller than the token or
+  if any resolved role fails contrast. `tests/shell/accessibility_check.py`
+  fails if new raw font sizes, hardcoded component colours or unnamed icon-only
+  buttons appear.
+- The full manual screen-reader and keyboard gate, and the documented colour
+  literals, are in [`docs/accessibility.md`](../docs/accessibility.md).
+
 ## Responsive rules
 
 - 720x1280 portrait: bottom navigation, four-column app grid, stacked clock and
@@ -116,8 +137,9 @@ write counter did not change.
 - 1280x720 landscape: 96 px side rail, six-column app grid, clock and quick
   actions side by side, 54 px keypad in a two-column lock layout, notification
   cards capped at 820 px.
-- Actionable controls are at least 48 px; navigation is 72 px, quick actions are
-  76-84 px, app tiles are 68-86 px and settings rows are 60-78 px.
+- Actionable controls are at least `Theme.minTouchTarget` (48 px); navigation
+  is 72 px, quick actions are 76-84 px, app tiles are 68-86 px and settings
+  rows are 60-78 px.
 - `PADILHA_SHELL_SIZE=WxH` forces a windowed size for testing.
 - The shell body gets a bottom inset from `KeyboardPanel.qml` in inline mode,
   or from `InputMethod.keyboardRectangle` when Squeekboard is open, so the
@@ -182,7 +204,9 @@ These variables exist for reproducible screenshots and tests:
 | `PADILHA_SHELL_PIN` | pre-fill the prototype PIN dots |
 | `PADILHA_SHELL_GRAB=/path.png` | render the shell to a PNG and exit |
 | `PADILHA_SHELL_GRAB_DELAY` | grab delay in ms (default 1200) |
-| `PADILHA_SHELL_SELFTEST=1` | run palette/state assertions and exit |
+| `PADILHA_SHELL_SELFTEST=1` | run palette/state/contrast/touch-target assertions and exit |
+| `PADILHA_SHELL_FONT_SCALE` | text scale from 0.8 to 2.0, default 1.0 |
+| `PADILHA_SHELL_TOUCH_TARGET` | minimum touch target in logical px, 48-96, default 48 |
 | `PADILHA_SHELL_OSK=compositor\|inline\|auto\|off` | keyboard backend: Squeekboard/compositor (default), forced fallback, auto fallback, or no shell keyboard |
 | `PADILHA_SHELL_KEYBOARD=1` | force the fallback panel on, for screenshots/tests |
 | `PADILHA_SHELL_KEYBOARD_PURPOSE=text\|terminal\|url\|password` | initial fallback layout purpose |
@@ -197,10 +221,11 @@ These variables exist for reproducible screenshots and tests:
 
 ```sh
 make test            # repository checks, including keyboard, modem, settings and shell tests
+make accessibility-test # palette, contrast, font/touch and checklist gates
 tests/keyboard.sh    # Squeekboard config/layouts/privacy and installer checks
 tests/modem.sh       # ModemManager policy, no-modem daemon, emulated call/SMS flow
 tests/settings.sh    # settings policy, navigation/validation/persistence and page renders
-tests/shell.sh       # palette, contrast, qmllint, self-test, telephony renders
+tests/shell.sh       # palette, contrast, accessibility, qmllint, self-test, renders
 ```
 
 The offscreen render path sets `QT_QPA_PLATFORM=offscreen` and

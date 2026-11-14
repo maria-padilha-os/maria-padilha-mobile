@@ -14,13 +14,21 @@ Item {
     property real tileSize: 72
     signal clicked()
 
-    implicitWidth: tileSize
-    implicitHeight: tileSize + (showLabel ? 30 : 0)
+    readonly property real effectiveTileSize: Math.max(root.theme.minTouchTarget, tileSize)
+    implicitWidth: effectiveTileSize
+    implicitHeight: effectiveTileSize
+        + (showLabel ? root.theme.scaledFont(12) + 18 : 0)
     scale: tap.pressed ? 0.95 : 1.0
+    objectName: "padilha-touch-target"
+    activeFocusOnTab: true
 
     Accessible.role: Accessible.Button
     Accessible.name: app ? app.name : ""
     Accessible.onPressAction: root.clicked()
+
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
+    Keys.onSpacePressed: root.clicked()
 
     readonly property color toneBackground: {
         switch (tone % 4) {
@@ -45,16 +53,18 @@ Item {
 
     Rectangle {
         id: tile
-        width: root.tileSize
-        height: root.tileSize
-        radius: Math.round(root.tileSize * 0.28)
+        width: root.effectiveTileSize
+        height: root.effectiveTileSize
+        radius: Math.round(root.effectiveTileSize * 0.28)
         color: root.toneBackground
+        border.width: root.activeFocus ? 2 : 0
+        border.color: root.theme.accent
         anchors.horizontalCenter: parent.horizontalCenter
 
         Image {
             id: appIcon
             anchors.centerIn: parent
-            width: Math.round(root.tileSize * 0.5)
+            width: Math.round(root.effectiveTileSize * 0.5)
             height: width
             source: root.app && root.app.entry ? Quickshell.iconPath(root.app.icon) : ""
             sourceSize.width: width
@@ -68,7 +78,7 @@ Item {
             visible: !appIcon.visible
             text: root.app ? root.app.name.substring(0, 1).toUpperCase() : "?"
             color: root.toneForeground
-            font.pixelSize: Math.round(root.tileSize * 0.38)
+            font.pixelSize: root.theme.scaledFont(Math.round(root.effectiveTileSize * 0.38))
             font.weight: Font.DemiBold
         }
     }
@@ -80,7 +90,7 @@ Item {
         width: parent.width
         text: root.app ? root.app.name : ""
         color: root.theme.text
-        font.pixelSize: 12
+        font.pixelSize: root.theme.scaledFont(12)
         font.weight: Font.Medium
         horizontalAlignment: Text.AlignHCenter
         elide: Text.ElideRight

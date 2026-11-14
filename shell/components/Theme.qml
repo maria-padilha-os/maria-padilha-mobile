@@ -27,6 +27,21 @@ Item {
     property bool ready: false
     property var data: ({})
 
+    // Accessibility tokens.
+    //
+    // Text scaling is opt-in through PADILHA_SHELL_FONT_SCALE so the shell
+    // follows an accessibility setting without depending on a
+    // compositor-specific API. The range covers 80% through the WCAG
+    // "resize text" target of 200%. The minimum touch target is 48 logical
+    // pixels; an operator may raise it up to 96 with
+    // PADILHA_SHELL_TOUCH_TARGET, but never below 48.
+    readonly property real fontScaleMinimum: 0.8
+    readonly property real fontScaleMaximum: 2.0
+    readonly property real fontScale: _readFontScale()
+    readonly property int minTouchTarget: _readMinimumTouchTarget()
+    readonly property real textContrastThreshold: 4.5
+    readonly property real nonTextContrastThreshold: 3.0
+
     readonly property string mode: data && data.mode ? data.mode : "light"
     readonly property bool dark: mode === "dark"
     readonly property string schemeName: data && data.name ? data.name : "padilha"
@@ -116,6 +131,39 @@ Item {
         return text;
     }
 
+    function _readFontScale() {
+        const raw = parseFloat(Quickshell.env("PADILHA_SHELL_FONT_SCALE") || "");
+        if (!isFinite(raw) || raw <= 0)
+            return 1.0;
+        return Math.max(fontScaleMinimum,
+            Math.min(fontScaleMaximum, Math.round(raw * 100) / 100));
+    }
+
+    function _readMinimumTouchTarget() {
+        const raw = parseInt(Quickshell.env("PADILHA_SHELL_TOUCH_TARGET") || "", 10);
+        if (isNaN(raw))
+            return 48;
+        return Math.max(48, Math.min(96, raw));
+    }
+
+    // Every text size in the shell goes through this function. Keeping the
+    // tokens unscaled in the component API makes the scale auditable.
+    function scaledFont(value) {
+        const size = Number(value);
+        if (!isFinite(size) || size <= 0)
+            return 1;
+        return Math.max(1, Math.round(size * fontScale));
+    }
+
+    // Interactive components call this so a control can never be smaller than
+    // the agreed touch target even if a layout asks for less.
+    function touchTarget(value) {
+        const size = Number(value);
+        if (!isFinite(size) || size <= 0)
+            return minTouchTarget;
+        return Math.max(minTouchTarget, Math.round(size));
+    }
+
     function _raw(name, fallbackName) {
         if (root.data && root.data.colours) {
             let value = root.data.colours[name];
@@ -158,34 +206,129 @@ Item {
         return (high + 0.05) / (low + 0.05);
     }
 
-    // Return a foreground that is readable on bg. The preferred colour wins
-    // only when it reaches the requested WCAG ratio. The two neutral
-    // candidates are an explicit last resort, not the default text colour.
-    function bestOn(bg, preferred, minimum) {
-        const threshold = minimum === undefined ? 4.5 : minimum;
+    // Pick a neutral foreground that is readable on every background in the
+    // list. Soft warm neutrals are tried first; pure black/white are the final
+    // safety net, which guarantees at least one of them reaches 4.5:1 for any
+    // background colour.
+    function _bestNeutral(backgrounds, threshold) {
+        const soft = [Qt.rgba(0.075, 0.06, 0.055, 1), Qt.rgba(0.99, 0.97, 0.96, 1)];
+        const hard = [Qt.rgba(0, 0, 0, 1), Qt.rgba(1, 1, 1, 1)];
+        for (const group of [soft, hard]) {
+            let best = group[0];
+            let bestMinimum = -1;
+            for (const candidate of group) {
+                let minimum = Infinity;
+                for (const bg of backgrounds)
+                    minimum = Math.min(minimum, contrastRatio(candidate, bg));
+                if (minimum > bestMinimum) {
+                    bestMinimum = minimum;
+                    best = candidate;
+                }
+            }
+            if (bestMinimum >= threshold || group === hard)
+                return best;
+        }
+        return hard[0];
+    }
+
+    // Return a foreground that is readable on every supplied background. The
+    // preferred colour wins only when it reaches the requested WCAG ratio on
+    // all of them; otherwise a high-contrast neutral is chosen.
+    function bestOnAll(backgrounds, preferred, minimum) {
+        const threshold = minimum === undefined ? textContrastThreshold : minimum;
         if (preferred !== undefined && preferred !== null && preferred !== "" &&
-                contrastRatio(preferred, bg) >= threshold)
+                backgrounds.every(bg => contrastRatio(preferred, bg) >= threshold))
             return preferred;
-        const dark = Qt.rgba(0.075, 0.06, 0.055, 1);
-        const light = Qt.rgba(0.99, 0.97, 0.96, 1);
-        return contrastRatio(dark, bg) >= contrastRatio(light, bg) ? dark : light;
+        return _bestNeutral(backgrounds, threshold);
+    }
+
+    function bestOn(bg, preferred, minimum) {
+        return bestOnAll([bg], preferred, minimum);
+    }
+
+    // Role pairs used by the mobile shell. This is the single QML-side list
+    // the self-test walks; tests/shell/contrast_check.py mirrors it so the
+    // palette can be checked without starting Quickshell.
+    function contrastPairs() {
+        const pairs = [
+            ["text-on-surface", text, surface],
+            ["text-on-surface-low", text, surfaceLow],
+            ["text-muted-on-surface", textMuted, surface],
+            ["text-muted-on-surface-low", textMuted, surfaceLow],
+            ["container-text-on-container", containerText, surfaceContainer],
+            ["container-text-on-high", containerText, surfaceHigh],
+            ["container-muted-on-container", containerMuted, surfaceContainer],
+            ["container-muted-on-high", containerMuted, surfaceHigh],
+            ["high-text-on-high", highText, surfaceHigh],
+            ["high-text-on-highest", highText, surfaceHighest],
+            ["high-muted-on-high", highMuted, surfaceHigh],
+            ["high-muted-on-highest", highMuted, surfaceHighest],
+            ["primary-text-on-primary", primaryText, primary],
+            ["primary-container-text", primaryContainerText, primaryContainer],
+            ["secondary-text-on-secondary", secondaryText, secondary],
+            ["secondary-container-text", secondaryContainerText, secondaryContainer],
+            ["tertiary-container-text", tertiaryContainerText, tertiaryContainer],
+            ["danger-text-on-danger", dangerText, danger],
+            ["danger-container-text", dangerContainerText, dangerContainer],
+            ["success-text-on-success", successText, success],
+            ["success-container-text", successContainerText, successContainer],
+            ["inverse-text-on-inverse", inverseText, inverseSurface],
+            ["accent-on-surface", accent, surface],
+            ["accent-on-surface-low", accent, surfaceLow],
+            ["accent-on-container", accent, surfaceContainer],
+            ["accent-on-high", accent, surfaceHigh],
+            ["danger-on-surface", danger, surface],
+            ["danger-on-high", danger, surfaceHigh],
+            ["success-on-surface", success, surface],
+            ["success-on-high", success, surfaceHigh]
+        ];
+        return pairs.map(pair => ({
+            name: pair[0],
+            foreground: pair[1],
+            background: pair[2],
+            minimum: textContrastThreshold,
+            kind: "text"
+        })).concat([
+            ["outline-on-surface", outline, surface],
+            ["outline-on-container", outline, surfaceContainer],
+            ["outline-on-high", outline, surfaceHigh]
+        ].map(pair => ({
+            name: pair[0],
+            foreground: pair[1],
+            background: pair[2],
+            minimum: nonTextContrastThreshold,
+            kind: "non-text"
+        })));
+    }
+
+    function contrastFailures() {
+        const failures = [];
+        for (const pair of contrastPairs()) {
+            const actual = contrastRatio(pair.foreground, pair.background);
+            if (actual + 0.0001 < pair.minimum) {
+                failures.push(pair.name + " " + actual.toFixed(2) + ":1 < "
+                    + pair.minimum.toFixed(2) + ":1");
+            }
+        }
+        return failures;
     }
 
     // Guarded roles are assigned explicitly so a palette reload cannot leave a
     // foreground stuck at its pre-load value.
     function _refreshGuarded() {
-        text = bestOn(surface, _role("onSurface"));
-        textMuted = bestOn(surface, _role("onSurfaceVariant"));
-        containerText = bestOn(surfaceContainer, _role("onSurface"));
-        containerMuted = bestOn(surfaceContainer, _role("onSurfaceVariant"));
-        highText = bestOn(surfaceHigh, _role("onSurface"));
-        highMuted = bestOn(surfaceHigh, _role("onSurfaceVariant"));
+        text = bestOnAll([surface, surfaceLow], _role("onSurface"));
+        textMuted = bestOnAll([surface, surfaceLow], _role("onSurfaceVariant"));
+        containerText = bestOnAll([surfaceContainer, surfaceHigh], _role("onSurface"));
+        containerMuted = bestOnAll([surfaceContainer, surfaceHigh], _role("onSurfaceVariant"));
+        highText = bestOnAll([surfaceHigh, surfaceHighest], _role("onSurface"));
+        highMuted = bestOnAll([surfaceHigh, surfaceHighest], _role("onSurfaceVariant"));
         primaryText = bestOn(primary, _role("onPrimary"));
         primaryContainerText = bestOn(primaryContainer, _role("onPrimaryContainer"));
         secondaryText = bestOn(secondary, _role("onSecondary"));
         secondaryContainerText = bestOn(secondaryContainer, _role("onSecondaryContainer"));
         tertiaryContainerText = bestOn(tertiaryContainer, _role("onTertiaryContainer"));
-        accent = bestOn(surface, _role("primary"));
+        accent = bestOnAll([surface, surfaceLow, surfaceContainer, surfaceHigh],
+            _role("primary"));
         dangerText = bestOn(danger, _role("onError"));
         dangerContainerText = bestOn(dangerContainer, _role("onErrorContainer"));
         successText = bestOn(success, _role("onSuccess"));
