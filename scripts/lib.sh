@@ -91,6 +91,16 @@ validate_config() {
     POWER_SUSPEND_POLICY POWER_SUSPEND_ALLOW_HIBERNATE
     POWER_SUSPEND_ALLOW_HYBRID_SLEEP POWER_SUSPEND_ALLOW_SUSPEND_THEN_HIBERNATE
     POWER_IDLE_ACTION POWER_DIAGNOSTIC_READ_ONLY
+    SMOKE_CONFIG SMOKE_CONFIG_VERSION SMOKE_ARCH SMOKE_ALPINE_RELEASE
+    SMOKE_KERNEL_VERSION SMOKE_KERNEL_URL SMOKE_KERNEL_SHA256
+    SMOKE_ROOTFS_URL SMOKE_ROOTFS_SHA256
+    SMOKE_MARKER SMOKE_INIT_CONFIG SMOKE_KERNEL_NAME SMOKE_INITRAMFS_NAME
+    SMOKE_BOOT_LOG SMOKE_MANIFEST SMOKE_CACHE_DIR SMOKE_BUILD_DIR
+    SMOKE_OUT_DIR SMOKE_QEMU_BINARY SMOKE_QEMU_MACHINE SMOKE_QEMU_CPU_TCG
+    SMOKE_QEMU_CPU_KVM SMOKE_QEMU_MEMORY SMOKE_CONSOLE
+    SMOKE_DOWNLOAD_BUDGET_MIB SMOKE_ARTIFACT_BUDGET_MIB
+    SMOKE_BUILD_TIME_BUDGET SMOKE_BOOT_TIME_BUDGET
+    SMOKE_KVM_BOOT_TIME_BUDGET
   )
 
   for var in "${required[@]}"; do
@@ -288,6 +298,58 @@ validate_config() {
   [ "$FLASHING_REQUIRE_CHECKSUM" = "true" ] ||
     die "the flashing preflight must require an image checksum"
 
+  # QEMU smoke test: pinned Alpine release inputs, a stable serial marker and
+  # hard size/time budgets. The cache and output paths must stay inside this
+  # checkout so CI cannot be pointed at a host path by a config change.
+  [ "$SMOKE_CONFIG_VERSION" = "1" ] ||
+    die "unsupported smoke config version: $SMOKE_CONFIG_VERSION"
+  [ "$SMOKE_ARCH" = "aarch64" ] ||
+    die "the smoke guest must be aarch64 (got '$SMOKE_ARCH')"
+  [[ "$SMOKE_ALPINE_RELEASE" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+    die "SMOKE_ALPINE_RELEASE must be an exact x.y.z release"
+  [[ "$SMOKE_KERNEL_SHA256" =~ ^[0-9a-f]{64}$ ]] ||
+    die "SMOKE_KERNEL_SHA256 must be a full sha256"
+  [[ "$SMOKE_ROOTFS_SHA256" =~ ^[0-9a-f]{64}$ ]] ||
+    die "SMOKE_ROOTFS_SHA256 must be a full sha256"
+  [[ "$SMOKE_MARKER" =~ ^[A-Z][A-Z0-9_]+$ ]] ||
+    die "SMOKE_MARKER must be an uppercase serial marker"
+  case "$SMOKE_KERNEL_URL" in https://*) ;; *) die "SMOKE_KERNEL_URL must use https" ;; esac
+  case "$SMOKE_ROOTFS_URL" in https://*) ;; *) die "SMOKE_ROOTFS_URL must use https" ;; esac
+  [ -f "$ROOT/$SMOKE_INIT_CONFIG" ] ||
+    die "missing smoke init: $SMOKE_INIT_CONFIG"
+  case "$SMOKE_INIT_CONFIG" in
+    config/smoke/*) ;;
+    *) die "smoke init must stay under config/smoke/" ;;
+  esac
+  case "$SMOKE_CACHE_DIR" in
+    "$ROOT"/.scratch/*) ;;
+    *) die "SMOKE_CACHE_DIR must stay under $ROOT/.scratch" ;;
+  esac
+  case "$SMOKE_BUILD_DIR" in
+    "$ROOT"/.scratch/*) ;;
+    *) die "SMOKE_BUILD_DIR must stay under $ROOT/.scratch" ;;
+  esac
+  case "$SMOKE_OUT_DIR" in
+    "$ROOT"/out/*) ;;
+    *) die "SMOKE_OUT_DIR must stay under $ROOT/out" ;;
+  esac
+  local smoke_budget
+  for smoke_budget in "$SMOKE_DOWNLOAD_BUDGET_MIB" "$SMOKE_ARTIFACT_BUDGET_MIB" \
+    "$SMOKE_BUILD_TIME_BUDGET" "$SMOKE_BOOT_TIME_BUDGET" \
+    "$SMOKE_KVM_BOOT_TIME_BUDGET"; do
+    [[ "$smoke_budget" =~ ^[0-9]+$ ]] && [ "$smoke_budget" -gt 0 ] ||
+      die "smoke size/time budgets must be positive integers"
+  done
+  [ "$SMOKE_ARTIFACT_BUDGET_MIB" -le "$SMOKE_DOWNLOAD_BUDGET_MIB" ] ||
+    die "SMOKE_ARTIFACT_BUDGET_MIB must not exceed SMOKE_DOWNLOAD_BUDGET_MIB"
+  [ "$SMOKE_KVM_BOOT_TIME_BUDGET" -le "$SMOKE_BOOT_TIME_BUDGET" ] ||
+    die "SMOKE_KVM_BOOT_TIME_BUDGET must not exceed SMOKE_BOOT_TIME_BUDGET"
+  [ -n "$SMOKE_QEMU_BINARY" ] || die "SMOKE_QEMU_BINARY must not be empty"
+  [ "$SMOKE_QEMU_MACHINE" = "virt" ] ||
+    die "the smoke guest must use the QEMU virt machine"
+  [[ "$SMOKE_QEMU_MEMORY" =~ ^[0-9]+$ ]] ||
+    die "SMOKE_QEMU_MEMORY must be an integer in MiB"
+
   case "$PMAPORTS_REPO" in https://*) ;; *) die "PMAPORTS_REPO must use https" ;; esac
   case "$PMBOOTSTRAP_REPO" in https://*) ;; *) die "PMBOOTSTRAP_REPO must use https" ;; esac
 
@@ -324,6 +386,7 @@ validate_required_files() {
     docs/base-assumption.md
     docs/build.md
     docs/flashing.md
+    docs/ci.md
     docs/adr/0002-on-screen-keyboard.md
     docs/keyboard.md
     docs/qemu-keyboard-checklist.md
@@ -339,8 +402,13 @@ validate_required_files() {
     config/power/power.conf
     config/modem/modem.conf
     config/camera/camera.conf
+    config/smoke.conf
+    config/smoke/init.sh
     scripts/telephony-bridge.py
     scripts/camera-bridge.py
+    scripts/build-smoke-rootfs.sh
+    scripts/smoke-cpio.py
+    scripts/qemu-smoke.sh
     tests/modem.sh
     tests/modem/fake_modemmanager.py
     tests/modem/test_telephony_bridge.py
@@ -349,6 +417,7 @@ validate_required_files() {
     tests/camera/fake_camera_portal.py
     tests/camera/test_camera_bridge.py
     tests/camera/test_shell_camera.py
+    tests/image.sh
     config/power/systemd/maria-padilha-charge-thresholds.service
     config/power/systemd/sleep.conf.d/10-maria-padilha-sleep.conf
     config/power/systemd/logind.conf.d/10-maria-padilha-power.conf
@@ -398,18 +467,22 @@ validate_required_files() {
   local executable=(
     scripts/build.sh
     scripts/flash-check.sh
+    scripts/build-smoke-rootfs.sh
     scripts/install-squeekboard.sh
     scripts/power-charge-thresholds.sh
     scripts/power-diagnostic.sh
     scripts/power-sleep-hook.sh
     scripts/power-suspend-check.sh
+    scripts/qemu-smoke.sh
     scripts/run-qemu.sh
+    scripts/smoke-cpio.py
     scripts/stage-power-config.sh
     scripts/telephony-bridge.py
     scripts/camera-bridge.py
     tests/all.sh
     tests/build.sh
     tests/flashing.sh
+    tests/image.sh
     tests/keyboard.sh
     tests/power.sh
     tests/shell.sh
@@ -532,15 +605,20 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
 }
 
+qemu_binary() {
+  printf '%s\n' "${PADILHA_QEMU_BINARY:-qemu-system-aarch64}"
+}
+
 check_qemu_binary() {
-  local version
-  if ! command -v qemu-system-aarch64 >/dev/null 2>&1; then
-    die "qemu-system-aarch64 is required to boot the image"
+  local binary version
+  binary=$(qemu_binary)
+  if ! command -v "$binary" >/dev/null 2>&1; then
+    die "$binary is required to boot the image"
   fi
-  version=$(qemu-system-aarch64 --version | sed -n 's/^QEMU emulator version \([0-9][0-9.]*\).*/\1/p' | head -1)
-  [ -n "$version" ] || die "could not determine qemu-system-aarch64 version"
+  version=$("$binary" --version | sed -n 's/^QEMU emulator version \([0-9][0-9.]*\).*/\1/p' | head -1)
+  [ -n "$version" ] || die "could not determine $binary version"
   if [ "$(printf '%s\n%s\n' "$QEMU_MIN_VERSION" "$version" | sort -V | head -1)" != "$QEMU_MIN_VERSION" ]; then
-    die "qemu-system-aarch64 $version is older than $QEMU_MIN_VERSION"
+    die "$binary $version is older than $QEMU_MIN_VERSION"
   fi
-  ok "qemu-system-aarch64 $version"
+  ok "$binary $version"
 }

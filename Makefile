@@ -1,13 +1,16 @@
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := check
 
-.PHONY: check test keyboard-test shell-test settings-test power-test modem-test accessibility-test camera-test flashing-test build build-dry-run boot qemu clean
+.PHONY: check test keyboard-test shell-test settings-test power-test modem-test accessibility-test camera-test flashing-test image-test build build-dry-run boot qemu smoke-rootfs qemu-smoke smoke smoke-tcg clean
 
 check:
 	@tests/build.sh
 
 test:
 	@tests/all.sh
+
+image-test:
+	@tests/image.sh
 
 keyboard-test:
 	@tests/keyboard.sh
@@ -53,5 +56,17 @@ boot:
 qemu:
 	@scripts/run-qemu.sh
 
+smoke-rootfs:
+	@scripts/build-smoke-rootfs.sh
+
+qemu-smoke:
+	@scripts/qemu-smoke.sh
+
+smoke: smoke-rootfs
+	@scripts/qemu-smoke.sh --accel auto
+
+smoke-tcg: smoke-rootfs
+	@scripts/qemu-smoke.sh --accel tcg
+
 clean:
-	@rm -rf -- out .scratch/build
+	@rm -rf -- out .scratch/build .scratch/smoke-build .scratch/smoke-cache

@@ -412,7 +412,10 @@ The build entry point is [`scripts/build.sh`](scripts/build.sh); see
 make check        # unprivileged config/files/secrets/checksum gate
 make build        # full QEMU image build on a builder with sudo/doas
 make qemu         # boot the checked image with QEMU
+make smoke        # minimal aarch64 rootfs + QEMU serial marker (KVM required)
+make smoke-tcg    # same, explicit bounded TCG for a KVM-less host
 make test         # CI checks
+make image-test   # smoke config, KVM fail-fast and CI artifact checks
 make accessibility-test # palette, contrast, font/touch and checklist gates
 make keyboard-test # Squeekboard config/layout/privacy checks only
 make shell-test    # shell self-test, palette and responsive renders
@@ -446,3 +449,11 @@ the QEMU target lives in [`devices/qemu-aarch64/`](devices/qemu-aarch64/).
 No flasher, partitioner or bootloader installer is implemented; the manual
 procedure and recovery boundary are in [`docs/flashing.md`](docs/flashing.md),
 and only the QEMU target is built in this milestone.
+
+CI builds a minimal aarch64 rootfs from pinned Alpine inputs and boots it with
+QEMU until the serial marker `MARIA_PADILHA_QEMU_SMOKE_OK` appears. The smoke
+path needs no root, touches no block device and publishes no release. It fails
+immediately when native KVM is unavailable rather than waiting on emulation;
+the x86_64 CI runner opts into explicit TCG with a hard timeout. Checksums,
+artifact contents, cache rules and the size/time budgets are documented in
+[`docs/ci.md`](docs/ci.md).

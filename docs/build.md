@@ -8,12 +8,17 @@ PinePhone target is documented but not built or flashed in this milestone.
 | Path | Purpose |
 | --- | --- |
 | `scripts/build.sh` | Build entry point; wraps the pinned toolchain |
-| `scripts/run-qemu.sh` | Boot the built image with QEMU |
+| `scripts/run-qemu.sh` | Boot the built full image with QEMU |
+| `scripts/build-smoke-rootfs.sh` | Build the unprivileged minimal aarch64 smoke rootfs |
+| `scripts/qemu-smoke.sh` | Boot the smoke rootfs with a hard timeout and serial marker |
+| `scripts/smoke-cpio.py` | Deterministic cpio packer for the smoke initramfs |
 | `scripts/lib.sh` | Shared config, validation and checksum helpers |
 | `config/build.conf` | Pinned release, toolchain commits and mirrors |
 | `config/flashing.conf` | Manual-only flashing policy and per-device flash status |
 | `docs/flashing.md` | Supported-device matrix, backups, manual flash and recovery |
 | `scripts/flash-check.sh` | Read-only image checksum and target-path preflight |
+| `config/smoke.conf` | Pinned Alpine kernel/rootfs and smoke size/time budgets |
+| `config/smoke/init.sh` | Smoke guest PID 1; prints the known serial marker |
 | `config/keyboard/keyboard.conf` | Squeekboard package, layouts, orientation and privacy policy |
 | `config/power/power.conf` | Battery, charge-threshold, thermal and suspend policy |
 | `config/modem/modem.conf` | ModemManager package, D-Bus interfaces and telephony privacy policy |
@@ -36,6 +41,7 @@ PinePhone target is documented but not built or flashed in this milestone.
 | `tests/camera.sh` | Camera policy, generated pattern, emulated portal and shell process checks |
 | `tests/flashing.sh` | Flashing docs, manual-only policy and preflight refusals |
 | `tests/shell.sh` | Palette, QML lint, self-test, camera/telephony privacy and offscreen render checks |
+| `tests/image.sh` | Smoke config, checksum, KVM fail-fast and artifact workflow checks |
 | `tests/all.sh` | Repository checks used by CI |
 
 ## Prerequisites
@@ -52,9 +58,13 @@ PinePhone target is documented but not built or flashed in this milestone.
 - For the flashing preflight only: `lsblk` (util-linux) and `sha256sum`. The
   preflight is read-only and needs no root; the manual write step in
   [`docs/flashing.md`](flashing.md) is separate and is never run by the tests.
-- `qemu-system-aarch64` **only** for `--boot` / `scripts/run-qemu.sh`
+- `qemu-system-aarch64` **only** for `--boot`, `scripts/run-qemu.sh` and the
+  unprivileged smoke test
+- `curl` and a POSIX tar **only** for the first smoke-rootfs download; cached
+  files are still re-hashed against the pins
 - `sudo` or `doas` **only** for a full `pmbootstrap` build. pmbootstrap uses
   chroot and mount internally; the wrapper never calls either directly.
+  The smoke rootfs build and boot never use them.
 - No root for the keyboard checks or `scripts/install-squeekboard.sh`; the
   installer writes only under the user's data directory and applies
   unprivileged gsettings.
@@ -71,7 +81,10 @@ make build-dry-run         # print the pinned build plan
 make build                 # full image build (builder with sudo/doas)
 make boot                  # build, then boot with QEMU
 make qemu                  # boot an already-built image
+make smoke                 # build + boot the minimal smoke rootfs (KVM required)
+make smoke-tcg             # same, explicit bounded TCG for a KVM-less host
 make test                  # repository CI checks, including keyboard, power, modem and camera
+make image-test            # smoke config/KVM/workflow checks only
 make power-test            # power config, fixtures, threshold no-op, suspend guard
 make modem-test            # ModemManager policy, no-modem daemon, emulated call/SMS flow
 make camera-test           # camera policy, generated pattern, emulated portal and shell flow
@@ -95,6 +108,8 @@ scripts/build.sh --check
 scripts/build.sh --dry-run
 scripts/build.sh
 scripts/run-qemu.sh
+scripts/build-smoke-rootfs.sh
+scripts/qemu-smoke.sh --accel tcg
 ```
 
 The default target is `qemu-aarch64`. `scripts/build.sh --device NAME` selects
@@ -163,14 +178,37 @@ device. Headless is the default so CI needs no display server. The expected
 result is a Phosh session at the device's configured resolution; a boot that
 reaches the login/session is the milestone gate, not a performance benchmark.
 
+## CI smoke test
+
+The hosted CI job does not run the privileged full image build. It builds a
+minimal aarch64 rootfs from the pinned Alpine kernel and minirootfs, boots it
+with no disk, network or display, and requires the serial marker
+`MARIA_PADILHA_QEMU_SMOKE_OK`. Both downloaded files are SHA-256 checked before
+unpacking, and the kernel and initramfs are checksummed and uploaded with the
+serial log as workflow artifacts.
+
+```sh
+make smoke       # auto acceleration; fails fast if KVM is unavailable
+make smoke-tcg   # explicit bounded TCG for a host without usable KVM
+```
+
+`--accel auto` fails immediately with a clear `FAIL KVM ...` message when the
+host cannot provide native KVM; it never silently falls back to an unbounded
+emulated boot. Cross-architecture aarch64-on-x86_64 CI explicitly opts into TCG,
+which still has a hard wall-clock timeout. The size and time budgets, artifact
+list, cache rules and failure modes are in [`docs/ci.md`](ci.md). No release is
+published and no physical device is touched by this path.
+
 ## Re-pinning
 
 1. Resolve the exact `v26.06` `pmaports` release commit.
 2. Update `PMAPORTS_COMMIT` in `config/build.conf`.
 3. Update `PMBOOTSTRAP_VERSION` / `PMBOOTSTRAP_COMMIT` together when moving
    pmbootstrap.
-4. Run `make check`, then a full QEMU build and boot on a builder.
-5. Record the change in the commit message; never replace a pin with a branch
+4. Update the Alpine kernel/minirootfs URLs and SHA-256 pins together in
+   `config/smoke.conf` when moving the smoke guest.
+5. Run `make check`, then a full QEMU build and boot on a builder.
+6. Record the change in the commit message; never replace a pin with a branch
    name or a floating tag.
 
 ## Out of scope
