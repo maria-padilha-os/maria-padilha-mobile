@@ -7,9 +7,17 @@ This file only records the device choice. It is **not** a support claim and
 this milestone does not build, partition, flash or boot a phone:
 
 - `scripts/build.sh` rejects `--device pine64-pinephone`
-- there is no flasher, partitioner or bootloader step in this repository
+- there is no flasher, partitioner or bootloader step in this repository; only
+  the read-only `scripts/flash-check.sh` preflight exists
 - a device is not supported until the physical checklist in the ADR passes on
   a real unit
+
+The matrix, backup requirements, data-loss and bootloader warnings, manual SD
+card procedure and recovery boundary are in
+[`docs/flashing.md`](../../docs/flashing.md). The repository status is
+`bring-up`, not `supported`, in
+[`config/flashing.conf`](../../config/flashing.conf); `--strict-support` refuses
+it until the physical gate passes. Do not flash a daily-driver phone.
 
 The QEMU target must pass first. Physical work resumes only as a separate,
 explicitly reviewed task.

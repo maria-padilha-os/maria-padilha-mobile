@@ -120,6 +120,13 @@ else
   fail=1
 fi
 
+if bash tests/flashing.sh; then
+  echo "ok tests/flashing.sh"
+else
+  echo "FAIL tests/flashing.sh"
+  fail=1
+fi
+
 if bash tests/shell.sh; then
   echo "ok tests/shell.sh"
 else

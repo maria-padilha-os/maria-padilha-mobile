@@ -1,7 +1,7 @@
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := check
 
-.PHONY: check test keyboard-test shell-test settings-test power-test modem-test accessibility-test camera-test build build-dry-run boot qemu clean
+.PHONY: check test keyboard-test shell-test settings-test power-test modem-test accessibility-test camera-test flashing-test build build-dry-run boot qemu clean
 
 check:
 	@tests/build.sh
@@ -31,6 +31,9 @@ accessibility-test:
 
 camera-test:
 	@tests/camera.sh
+
+flashing-test:
+	@tests/flashing.sh
 
 power-diagnostic:
 	@scripts/power-diagnostic.sh

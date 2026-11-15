@@ -11,6 +11,9 @@ PinePhone target is documented but not built or flashed in this milestone.
 | `scripts/run-qemu.sh` | Boot the built image with QEMU |
 | `scripts/lib.sh` | Shared config, validation and checksum helpers |
 | `config/build.conf` | Pinned release, toolchain commits and mirrors |
+| `config/flashing.conf` | Manual-only flashing policy and per-device flash status |
+| `docs/flashing.md` | Supported-device matrix, backups, manual flash and recovery |
+| `scripts/flash-check.sh` | Read-only image checksum and target-path preflight |
 | `config/keyboard/keyboard.conf` | Squeekboard package, layouts, orientation and privacy policy |
 | `config/power/power.conf` | Battery, charge-threshold, thermal and suspend policy |
 | `config/modem/modem.conf` | ModemManager package, D-Bus interfaces and telephony privacy policy |
@@ -31,6 +34,7 @@ PinePhone target is documented but not built or flashed in this milestone.
 | `tests/power.sh` | Power config, sysfs fixtures, threshold no-op, suspend guard and staging |
 | `tests/modem.sh` | ModemManager policy, real no-modem daemon and emulated call/SMS flow |
 | `tests/camera.sh` | Camera policy, generated pattern, emulated portal and shell process checks |
+| `tests/flashing.sh` | Flashing docs, manual-only policy and preflight refusals |
 | `tests/shell.sh` | Palette, QML lint, self-test, camera/telephony privacy and offscreen render checks |
 | `tests/all.sh` | Repository checks used by CI |
 
@@ -45,6 +49,9 @@ PinePhone target is documented but not built or flashed in this milestone.
   Quickshell binary for the shell process check, and `pipewire`/`gst-launch`
   only if a real capture is being tried manually. No camera device or portal
   prompt is needed for the automated checks.
+- For the flashing preflight only: `lsblk` (util-linux) and `sha256sum`. The
+  preflight is read-only and needs no root; the manual write step in
+  [`docs/flashing.md`](flashing.md) is separate and is never run by the tests.
 - `qemu-system-aarch64` **only** for `--boot` / `scripts/run-qemu.sh`
 - `sudo` or `doas` **only** for a full `pmbootstrap` build. pmbootstrap uses
   chroot and mount internally; the wrapper never calls either directly.
@@ -68,8 +75,17 @@ make test                  # repository CI checks, including keyboard, power, mo
 make power-test            # power config, fixtures, threshold no-op, suspend guard
 make modem-test            # ModemManager policy, no-modem daemon, emulated call/SMS flow
 make camera-test           # camera policy, generated pattern, emulated portal and shell flow
+make flashing-test         # flashing docs, manual-only policy and preflight refusals
 make power-diagnostic      # one-shot read-only battery/thermal/suspend report
 make stage-power           # stage power drop-ins/helper under .scratch/power-root
+```
+
+The flashing preflight is read-only and is not a flasher:
+
+```sh
+scripts/flash-check.sh --help
+scripts/flash-check.sh --device pine64-pinephone --image-only \
+  --image out/maria-padilha-pine64-pinephone.img
 ```
 
 Direct equivalents:
@@ -125,11 +141,13 @@ stack and its no-camera fallback are documented in
 [`docs/qemu-camera-checklist.md`](qemu-camera-checklist.md).
 
 No partitioner, bootloader installer or flasher is implemented here; the
-wrapper deliberately delegates image assembly to pmbootstrap. The `shell/`
-prototype is a separate Quickshell application and is not installed into the
-image by this builder yet. The on-screen keyboard package and layouts are
-documented in [`docs/keyboard.md`](keyboard.md); the layout installer is a
-user-session step, not a privileged image-build step.
+wrapper deliberately delegates image assembly to pmbootstrap. The read-only
+preflight and the manual, human-performed recovery boundary are in
+[`docs/flashing.md`](flashing.md). The `shell/` prototype is a separate
+Quickshell application and is not installed into the image by this builder yet.
+The on-screen keyboard package and layouts are documented in
+[`docs/keyboard.md`](keyboard.md); the layout installer is a user-session step,
+not a privileged image-build step.
 
 ## Booting in QEMU
 
@@ -157,9 +175,11 @@ reaches the login/session is the milestone gate, not a performance benchmark.
 
 ## Out of scope
 
-- flashing, partitioning or writing to physical devices
+- automatic flashing, partitioning or writing to physical devices; the manual
+  procedure and its read-only preflight are in [`docs/flashing.md`](flashing.md)
 - a polling thermal/power daemon, a timer unit or a laptop suspend test
-- bootloader unlock/bypass instructions
+- bootloader unlock/bypass procedures; only the safety warning in
+  [`docs/flashing.md`](flashing.md) is in scope
 - claiming a real call, SMS, carrier registration or call-audio result without
   a supported device/module; see [`docs/modem.md`](modem.md)
 - claiming a real camera frame, portal prompt or sensor support without the

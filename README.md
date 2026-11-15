@@ -27,6 +27,16 @@ image builder; Android is not the base and is not assumed.
 No image has been built or flashed, and no device support is claimed until the
 ADR's physical gate passes.
 
+**Flashing and recovery path documented, not implemented.** The
+[supported-device matrix and manual procedure](docs/flashing.md) cover
+prerequisites, verified backups, data-loss and bootloader-unlock warnings, SD
+card commands, first boot and recovery/unbrick notes. The only physical row is
+the bring-up PinePhone candidate; QEMU is explicitly virtual-only. A read-only
+preflight, `scripts/flash-check.sh`, validates the image SHA-256 and every
+proposed target path before a human writes anything, and has no automatic flash
+mode. There is still no flasher, partitioner or physical image builder in this
+checkout.
+
 **Shell prototype in place.** [`shell/`](shell/) is a small Quickshell 0.3 /
 Qt 6 touch shell with a status bar, app grid, notifications, a lock surface and
 an optional in-shell keyboard fallback. It reads the existing Maria Padilha
@@ -410,17 +420,29 @@ make settings-test # settings navigation/validation/persistence and page renders
 make power-test    # power config, diagnostic fixtures, threshold no-op, suspend guard
 make modem-test    # ModemManager policy, no-modem daemon and emulated call/SMS flow
 make camera-test   # camera policy, generated pattern, emulated portal and shell flow
+make flashing-test # flashing docs, manual-only policy and preflight refusals
 make power-diagnostic # one-shot read-only battery/thermal/suspend report
 make stage-power   # stage systemd/udev/helper files under .scratch/power-root
 ```
 
+The flashing preflight is read-only and never needs root:
+
+```sh
+scripts/flash-check.sh --help
+scripts/flash-check.sh --device pine64-pinephone --image-only \
+  --image out/maria-padilha-pine64-pinephone.img
+```
+
 Pinned `pmbootstrap`/`pmaports` inputs live in
-[`config/build.conf`](config/build.conf), the Squeekboard package/layout policy
-lives in [`config/keyboard/keyboard.conf`](config/keyboard/keyboard.conf), the
+[`config/build.conf`](config/build.conf), the flashing safety policy and device
+statuses live in [`config/flashing.conf`](config/flashing.conf), the Squeekboard
+package/layout policy lives in
+[`config/keyboard/keyboard.conf`](config/keyboard/keyboard.conf), the
 battery/thermal/suspend policy lives in
 [`config/power/power.conf`](config/power/power.conf), the modem/telephony policy
 lives in [`config/modem/modem.conf`](config/modem/modem.conf), the camera
 policy lives in [`config/camera/camera.conf`](config/camera/camera.conf), and
 the QEMU target lives in [`devices/qemu-aarch64/`](devices/qemu-aarch64/).
-Flashing and physical partitioning are out of scope; only the QEMU target is
-built in this milestone.
+No flasher, partitioner or bootloader installer is implemented; the manual
+procedure and recovery boundary are in [`docs/flashing.md`](docs/flashing.md),
+and only the QEMU target is built in this milestone.

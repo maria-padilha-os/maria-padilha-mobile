@@ -272,6 +272,22 @@ validate_config() {
     *) die "camera bridge must stay repository-relative" ;;
   esac
 
+  # Flashing policy: the repository may document and preflight a manual write,
+  # but it must never gain an automatic flashing path. scripts/flash-check.sh
+  # repeats these checks before it reads an image or a device path.
+  [ -f "$ROOT/config/flashing.conf" ] ||
+    die "missing flashing policy: config/flashing.conf"
+  # shellcheck source=/dev/null
+  . "$ROOT/config/flashing.conf"
+  [ "$FLASHING_CONFIG_VERSION" = "1" ] ||
+    die "unsupported flashing config version: $FLASHING_CONFIG_VERSION"
+  [ "$FLASHING_MODE" = "manual-check-only" ] ||
+    die "flashing mode must stay manual-check-only"
+  [ "$FLASHING_AUTOMATIC" = "false" ] ||
+    die "automatic flashing must stay disabled"
+  [ "$FLASHING_REQUIRE_CHECKSUM" = "true" ] ||
+    die "the flashing preflight must require an image checksum"
+
   case "$PMAPORTS_REPO" in https://*) ;; *) die "PMAPORTS_REPO must use https" ;; esac
   case "$PMBOOTSTRAP_REPO" in https://*) ;; *) die "PMBOOTSTRAP_REPO must use https" ;; esac
 
@@ -295,6 +311,7 @@ validate_required_files() {
     README.md
     Makefile
     config/build.conf
+    config/flashing.conf
     config/keyboard/keyboard.conf
     config/keyboard/layouts/us.yaml
     config/keyboard/layouts/us_wide.yaml
@@ -306,6 +323,7 @@ validate_required_files() {
     config/keyboard/layouts/pin/us_wide.yaml
     docs/base-assumption.md
     docs/build.md
+    docs/flashing.md
     docs/adr/0002-on-screen-keyboard.md
     docs/keyboard.md
     docs/qemu-keyboard-checklist.md
@@ -354,6 +372,7 @@ validate_required_files() {
     shell/palettes/padilha-light.json
     shell/README.md
     scripts/build.sh
+    scripts/flash-check.sh
     scripts/install-squeekboard.sh
     scripts/lib.sh
     scripts/power-charge-thresholds.sh
@@ -365,6 +384,7 @@ validate_required_files() {
     scripts/telephony-bridge.py
     tests/all.sh
     tests/build.sh
+    tests/flashing.sh
     tests/keyboard.sh
     tests/power.sh
     tests/shell.sh
@@ -377,6 +397,7 @@ validate_required_files() {
 
   local executable=(
     scripts/build.sh
+    scripts/flash-check.sh
     scripts/install-squeekboard.sh
     scripts/power-charge-thresholds.sh
     scripts/power-diagnostic.sh
@@ -388,6 +409,7 @@ validate_required_files() {
     scripts/camera-bridge.py
     tests/all.sh
     tests/build.sh
+    tests/flashing.sh
     tests/keyboard.sh
     tests/power.sh
     tests/shell.sh
