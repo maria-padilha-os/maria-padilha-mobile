@@ -11,6 +11,7 @@ jobs:
   scaffold-checks:
     name: scaffold checks
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -24,3 +25,58 @@ jobs:
           name: build-inputs-checksum
           path: out/build-inputs.sha256
           if-no-files-found: error
+          retention-days: 7
+
+  image-smoke:
+    name: qemu-aarch64 image smoke
+    runs-on: ubuntu-24.04
+    needs: scaffold-checks
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-system-arm
+          qemu-system-aarch64 --version | tee /tmp/qemu-version.txt
+
+      - name: Cache pinned Alpine downloads
+        uses: actions/cache@v4
+        with:
+          path: .scratch/smoke-cache
+          key: smoke-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('config/smoke.conf') }}
+          restore-keys: |
+            smoke-downloads-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Build minimal aarch64 rootfs
+        run: |
+          scripts/build-smoke-rootfs.sh
+          cat out/smoke/manifest.txt
+
+      - name: Boot QEMU serial smoke test
+        run: |
+          qemu-system-aarch64 --version | tee out/smoke/qemu-version.txt
+          case "$(uname -m)" in
+            aarch64 | arm64)
+              # Native aarch64: require KVM and fail fast if it is missing.
+              scripts/qemu-smoke.sh --accel auto
+              ;;
+            *)
+              # Cross-architecture aarch64 guest: KVM cannot accelerate it.
+              # Opt into TCG explicitly; the script still enforces a hard
+              # wall-clock boot budget and never hangs indefinitely.
+              echo "aarch64 guest on $(uname -m); using explicit, bounded TCG"
+              scripts/qemu-smoke.sh --accel tcg
+              ;;
+          esac
+
+      - name: Upload smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-aarch64-smoke
+          path: out/smoke/
+          if-no-files-found: warn
+          retention-days: 7
