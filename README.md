@@ -457,3 +457,9 @@ immediately when native KVM is unavailable rather than waiting on emulation;
 the x86_64 CI runner opts into explicit TCG with a hard timeout. Checksums,
 artifact contents, cache rules and the size/time budgets are documented in
 [`docs/ci.md`](docs/ci.md).
+
+## Support
+
+Maria Padilha is free software under GPL-3.0-only. Donations are optional and
+never unlock features or hold back builds. See [SUPPORT.md](SUPPORT.md) or
+[sponsor development on GitHub](https://github.com/sponsors/Mateus-M-Reis).
