@@ -1,5 +1,7 @@
 # Maria Padilha Mobile
 
+[![❤ Sponsor on GitHub](https://img.shields.io/badge/%E2%9D%A4%20Sponsor-GitHub-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/Mateus-M-Reis)
+
 **Maria Padilha de Bolso** — the touch-first Maria Padilha mobile OS.
 
 This repository is the mobile image and shell. It shares the Padilha palette,
