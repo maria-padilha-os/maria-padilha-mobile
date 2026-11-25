@@ -26,8 +26,10 @@ image builder; Android is not the base and is not assumed.
 | QEMU | `qemu-aarch64` |
 | Physical | PinePhone-class close-to-mainline aarch64 |
 
-No image has been built or flashed, and no device support is claimed until the
-ADR's physical gate passes.
+The unprivileged QEMU smoke image has been built and booted under QEMU; see
+[the QEMU release-candidate evidence](docs/release-candidate.md). The full
+Phosh image still needs a privileged builder, no device has been flashed, and
+no device support is claimed until the ADR's physical gate passes.
 
 **Flashing and recovery path documented, not implemented.** The
 [supported-device matrix and manual procedure](docs/flashing.md) cover
@@ -192,10 +194,10 @@ PADILHA_SHELL_OSK=inline PADILHA_SHELL_KEYBOARD=1 \
 The shell is intended to run inside the guest's Wayland session as a normal
 application:
 
-1. Build and boot the checked `qemu-aarch64` image with the existing,
-   unprivileged checks and the documented builder path
-   ([`docs/build.md`](docs/build.md)); this task does not build, flash or
-   partition anything.
+1. Build and boot the checked `qemu-aarch64` image with the existing
+   unprivileged smoke path or the documented full builder path
+   ([`docs/build.md`](docs/build.md)); the full builder needs root and is
+   separate from this shell prototype.
 2. Make Quickshell 0.3+ and the Qt 6 QML modules available in the guest, and
    confirm the image's `squeekboard` package is present.
 3. Copy this checkout into the guest (or use a guest shared folder), install
@@ -458,7 +460,10 @@ path needs no root, touches no block device and publishes no release. It fails
 immediately when native KVM is unavailable rather than waiting on emulation;
 the x86_64 CI runner opts into explicit TCG with a hard timeout. Checksums,
 artifact contents, cache rules and the size/time budgets are documented in
-[`docs/ci.md`](docs/ci.md).
+[`docs/ci.md`](docs/ci.md). The locally built QEMU-only candidate, including
+artifact paths and SHA-256 values, is recorded in
+[`docs/release-candidate.md`](docs/release-candidate.md). It is not a phone
+image and has not been flashed or published.
 
 ## Support
 

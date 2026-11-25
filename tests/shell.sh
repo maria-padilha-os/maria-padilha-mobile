@@ -41,6 +41,7 @@ if ! command -v quickshell >/dev/null 2>&1; then
 fi
 
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/padilha-shell-test.XXXXXX")
+mkdir -p "$tmp/cache"
 cleanup() { rm -rf -- "$tmp"; }
 trap cleanup EXIT
 
@@ -83,7 +84,7 @@ run_selftest() {
   set +e
   env "${extra_env[@]}" \
     QT_QPA_PLATFORM=offscreen QSG_RHI_BACKEND=software \
-    XDG_RUNTIME_DIR="$tmp/run-$label" \
+    XDG_RUNTIME_DIR="$tmp/run-$label" XDG_CACHE_HOME="$tmp/cache" \
     PADILHA_SHELL_DEMO=1 PADILHA_SHELL_SELFTEST=1 PADILHA_SCHEME="$scheme" \
     PADILHA_SHELL_FONT_SCALE="$font_scale" \
     timeout 45s quickshell -p "$ROOT/shell" --no-color >"$out" 2>&1
@@ -118,7 +119,7 @@ privacy_selftest() {
   chmod 700 "$tmp/run-privacy"
   set +e
   QT_QPA_PLATFORM=offscreen QSG_RHI_BACKEND=software \
-    XDG_RUNTIME_DIR="$tmp/run-privacy" \
+    XDG_RUNTIME_DIR="$tmp/run-privacy" XDG_CACHE_HOME="$tmp/cache" \
     PADILHA_SHELL_DEMO=1 PADILHA_SHELL_SELFTEST=1 PADILHA_SHELL_SURFACE=lock \
     PADILHA_SHELL_QUERY="$secret" PADILHA_SHELL_PIN=9876 \
     PADILHA_TELEPHONY_MESSAGE="$sms_secret" \
@@ -152,7 +153,7 @@ shot() {
 
   set +e
   QT_QPA_PLATFORM=offscreen QSG_RHI_BACKEND=software \
-    XDG_RUNTIME_DIR="$tmp/run-$label" \
+    XDG_RUNTIME_DIR="$tmp/run-$label" XDG_CACHE_HOME="$tmp/cache" \
     PADILHA_SHELL_DEMO=1 PADILHA_SHELL_SIZE="$size" PADILHA_SHELL_SURFACE="$surface" \
     PADILHA_SHELL_PIN="$pin" PADILHA_SCHEME="$scheme" PADILHA_SHELL_GRAB="$image" \
     PADILHA_SHELL_FONT_SCALE="$font_scale" \
